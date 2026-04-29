@@ -521,7 +521,7 @@ const ProviderDetail = () => {
                                 key={skill}
                                 className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full border border-green-200 flex items-center gap-1"
                               >
-                                🏥 {CAREGIVER_MEDICAL_SKILL_LABELS[skill as CaregiverMedicalSkill]?.en ?? skill}
+                                {CAREGIVER_MEDICAL_SKILL_LABELS[skill as CaregiverMedicalSkill]?.en ?? skill}
                               </span>
                             ))}
                         </div>

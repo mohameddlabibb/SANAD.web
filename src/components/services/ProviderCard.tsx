@@ -35,10 +35,20 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
   const isPremiumChef = provider.service === 'chefs' && provider.chefType === 'premium';
   const href = emergencyMode ? `/provider/${provider.id}?mode=emergency` : `/provider/${provider.id}`;
 
+  const formatAttr = (attr: string) =>
+    attr.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const attrs = provider.attributes ?? [];
+  const formatted = attrs.map(formatAttr);
+  const show3 = formatted.slice(0, 3).join('').length <= 28;
+  const visibleCount = show3 ? 3 : 2;
+  const visibleAttrs = formatted.slice(0, visibleCount);
+  const overflowCount = formatted.length - visibleCount;
+
   return (
-    <Link to={href} className="block">
-    <Card className={`group hover:shadow-card transition-all duration-300 overflow-hidden cursor-pointer ${emergencyMode ? 'hover:border-red-400/50 ring-1 ring-red-200' : 'hover:border-primary/30'} ${isPremiumChef ? 'ring-2 ring-amber-400/50' : ''}`}>
-      <CardContent className="p-0">
+    <Link to={href} className="block h-full">
+    <Card className={`group hover:shadow-card transition-all duration-300 overflow-hidden cursor-pointer flex flex-col h-full ${emergencyMode ? 'hover:border-red-400/50 ring-1 ring-red-200' : 'hover:border-primary/30'} ${isPremiumChef ? 'ring-2 ring-amber-400/50' : ''}`}>
+      <CardContent className="p-0 flex flex-col h-full">
         {/* Provider Image */}
         <div className={`relative h-48 flex items-center justify-center ${isPremiumChef ? 'bg-gradient-to-br from-amber-100 to-amber-50' : emergencyMode ? 'bg-gradient-to-br from-red-50 to-red-100/30' : 'bg-gradient-to-br from-primary/10 to-primary/5'}`}>
           <div className={`w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-3xl font-heading ${isPremiumChef ? 'bg-amber-200 text-amber-800' : emergencyMode ? 'bg-red-100 text-red-700' : 'bg-primary/20 text-primary'}`}>
@@ -77,7 +87,7 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
         </div>
 
         {/* Provider Info */}
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 flex flex-col flex-1">
           <div>
             <h3 className="font-heading text-lg text-foreground mb-1">
               {displayName}
@@ -106,14 +116,19 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
             </div>
           )}
 
-          {/* Chef Attributes — hide in emergency mode to save space */}
-          {!emergencyMode && provider.attributes && provider.attributes.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {provider.attributes.map((attr) => (
-                <span key={attr} className="text-xs bg-muted px-2 py-1 rounded-md">
+          {/* Attributes — single row, dynamic 2-or-3 cap with overflow count */}
+          {!emergencyMode && (
+            <div className="flex flex-nowrap gap-1.5 min-h-[26px]">
+              {visibleAttrs.map((attr) => (
+                <span key={attr} className="text-xs bg-muted px-2 py-1 rounded-md whitespace-nowrap shrink-0">
                   {attr}
                 </span>
               ))}
+              {overflowCount > 0 && (
+                <span className="text-xs text-muted-foreground px-1 py-1 shrink-0">
+                  +{overflowCount} more
+                </span>
+              )}
             </div>
           )}
 
@@ -129,7 +144,7 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border">
+          <div className="flex items-center justify-between pt-2 border-t border-border mt-auto">
             <div>
               <span className={`text-2xl font-bold ${isPremiumChef ? 'text-amber-600' : 'text-foreground'}`}>{provider.price}</span>
               <span className="text-sm text-muted-foreground"> EGP/{t('servicesPage.hour')}</span>

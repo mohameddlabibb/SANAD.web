@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
       yearsExperience, hourlyRate, monthlyRate,
       carModel, chefType, specialTags,
       medicalSkills, overnightAvailable,
+      maidServicesInput, maidBringsSupplies,
+      babysitterSkillsInput, babysitterOvernightAvailable, babysitterMaxChildren,
     } = body;
 
     if (!email || !password || !fullName || !serviceType || !nationalId || !dob) {
@@ -149,6 +151,18 @@ Deno.serve(async (req) => {
       }
       workerExtras.special_tags = medSkills;
       workerExtras.special_attributes = { overnight_available: overnightAvailable ?? false };
+    }
+    if (serviceType === 'maid') {
+      workerExtras.special_tags = Array.isArray(maidServicesInput) && maidServicesInput.length ? maidServicesInput : null;
+      workerExtras.special_attributes = { brings_supplies: maidBringsSupplies ?? false };
+    }
+    if (serviceType === 'babysitter') {
+      workerExtras.special_tags = Array.isArray(babysitterSkillsInput) && babysitterSkillsInput.length ? babysitterSkillsInput : null;
+      const babysitterAttrs: Record<string, unknown> = { overnight_available: babysitterOvernightAvailable ?? false };
+      if (babysitterMaxChildren != null && babysitterMaxChildren !== '') {
+        babysitterAttrs.max_children = Number(babysitterMaxChildren);
+      }
+      workerExtras.special_attributes = babysitterAttrs;
     }
 
     // 4. Insert into workers

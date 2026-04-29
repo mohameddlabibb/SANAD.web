@@ -89,6 +89,13 @@ export interface WorkerFormInput {
   // caregiver-specific
   medicalSkills: string[];
   overnightAvailable: boolean;
+  // maid-specific
+  maidServicesInput: string[];
+  maidBringsSupplies: boolean;
+  // babysitter-specific
+  babysitterSkillsInput: string[];
+  babysitterOvernightAvailable: boolean;
+  babysitterMaxChildren: string;
 }
 
 export async function createWorker(input: WorkerFormInput): Promise<string> {
@@ -122,6 +129,11 @@ export async function createWorker(input: WorkerFormInput): Promise<string> {
         specialTags: input.specialTags,
         medicalSkills: input.medicalSkills,
         overnightAvailable: input.overnightAvailable,
+        maidServicesInput: input.maidServicesInput,
+        maidBringsSupplies: input.maidBringsSupplies,
+        babysitterSkillsInput: input.babysitterSkillsInput,
+        babysitterOvernightAvailable: input.babysitterOvernightAvailable,
+        babysitterMaxChildren: input.babysitterMaxChildren !== '' ? Number(input.babysitterMaxChildren) : null,
       }),
     },
   );
@@ -166,6 +178,19 @@ export async function updateWorker(
     }
     workerExtras.special_tags = ensuredSkills.length ? ensuredSkills : ['basic_nursing'];
     workerExtras.special_attributes = { overnight_available: input.overnightAvailable ?? false };
+  }
+  if (input.serviceType === 'maid') {
+    workerExtras.special_tags = input.maidServicesInput?.length ? input.maidServicesInput : null;
+    workerExtras.special_attributes = { brings_supplies: input.maidBringsSupplies ?? false };
+  }
+  if (input.serviceType === 'babysitter') {
+    workerExtras.special_tags = input.babysitterSkillsInput?.length ? input.babysitterSkillsInput : null;
+    workerExtras.special_attributes = {
+      overnight_available: input.babysitterOvernightAvailable ?? false,
+      ...(input.babysitterMaxChildren !== '' && input.babysitterMaxChildren != null
+        ? { max_children: Number(input.babysitterMaxChildren) }
+        : {}),
+    };
   }
 
   const { error: workerError } = await supabase

@@ -8,7 +8,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Users, Briefcase, Calendar, CreditCard, Heart, RefreshCw } from 'lucide-react';
-import { CAREGIVER_MEDICAL_SKILLS, CAREGIVER_MEDICAL_SKILL_LABELS } from '@/types/workers';
+import {
+  CAREGIVER_MEDICAL_SKILLS, CAREGIVER_MEDICAL_SKILL_LABELS,
+  MAID_SERVICES, MAID_SERVICE_LABELS,
+  BABYSITTER_SKILLS, BABYSITTER_SKILL_LABELS,
+} from '@/types/workers';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -80,6 +84,13 @@ const EMPTY_WORKER_FORM = {
   // caregiver
   medicalSkillsInput: [] as string[],
   overnightAvailableInput: false,
+  // maid
+  maidServicesInput: [] as string[],
+  maidBringsSupplies: false,
+  // babysitter
+  babysitterSkillsInput: [] as string[],
+  babysitterOvernightAvailable: false,
+  babysitterMaxChildren: '',
 };
 
 const CAR_DATA: Record<string, string[]> = {
@@ -207,12 +218,28 @@ const Admin = () => {
   // ── worker filters ────────────────────────────────────────────────────────────
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [workerFilters, setWorkerFilters] = useState({
-    name: '', serviceType: '', city: '', minRating: '', minExperience: '', hasCar: '',
-    filterCarMake: '', filterCarModelName: '', filterCarYear: '',
+    name: '', serviceType: '', city: '', minRating: '', minExperience: '',
+    // driver-specific
+    hasCar: '', filterCarMake: '', filterCarModelName: '', filterCarYear: '',
+    // chef-specific
+    filterChefType: '', filterCuisine: '', filterSpecialty: '',
+    // caregiver-specific
+    filterCaregiverSkill: '', filterCaregiverOvernight: '',
+    // maid-specific
+    filterMaidService: '', filterMaidSupplies: '',
+    // babysitter-specific
+    filterBabysitterSkill: '', filterBabysitterOvernight: '',
   });
   const setWFilter = (field: string, value: string) =>
     setWorkerFilters((prev) => ({ ...prev, [field]: value }));
-  const EMPTY_WORKER_FILTERS = { name: '', serviceType: '', city: '', minRating: '', minExperience: '', hasCar: '', filterCarMake: '', filterCarModelName: '', filterCarYear: '' };
+  const EMPTY_WORKER_FILTERS = {
+    name: '', serviceType: '', city: '', minRating: '', minExperience: '',
+    hasCar: '', filterCarMake: '', filterCarModelName: '', filterCarYear: '',
+    filterChefType: '', filterCuisine: '', filterSpecialty: '',
+    filterCaregiverSkill: '', filterCaregiverOvernight: '',
+    filterMaidService: '', filterMaidSupplies: '',
+    filterBabysitterSkill: '', filterBabysitterOvernight: '',
+  };
   const activeFilterCount = Object.values(workerFilters).filter(Boolean).length;
 
   // ── donation institutes ───────────────────────────────────────────────────────
@@ -395,8 +422,52 @@ const Admin = () => {
         specialTags: workerForm.specialTagsInput,
         medicalSkills: workerForm.medicalSkillsInput,
         overnightAvailable: workerForm.overnightAvailableInput,
+        maidServicesInput: workerForm.maidServicesInput,
+        maidBringsSupplies: workerForm.maidBringsSupplies,
+        babysitterSkillsInput: workerForm.babysitterSkillsInput,
+        babysitterOvernightAvailable: workerForm.babysitterOvernightAvailable,
+        babysitterMaxChildren: workerForm.babysitterMaxChildren,
       });
-      await loadAll();
+
+      // Optimistically add the new worker to state — avoids a full loadAll() which blanks the page
+      const carModelStr = [workerForm.carMake, workerForm.carModelName, workerForm.carYear].filter(Boolean).join(' ') || workerForm.carModel || null;
+      const newWorkerRow: AdminWorkerRow = {
+        id: newWorkerId,
+        service_type: workerForm.serviceType,
+        average_rating: null,
+        years_experience: workerForm.yearsExperience !== '' ? Number(workerForm.yearsExperience) : null,
+        hourly_rate: workerForm.hourlyRate !== '' ? Number(workerForm.hourlyRate) : null,
+        monthly_rate: workerForm.monthlyRate !== '' ? Number(workerForm.monthlyRate) : null,
+        total_jobs: 0,
+        nationality: workerForm.nationality || null,
+        car_model: workerForm.serviceType === 'driver' ? carModelStr : null,
+        special_tags: workerForm.serviceType === 'chef'
+          ? (workerForm.specialTagsInput.length ? workerForm.specialTagsInput : null)
+          : workerForm.serviceType === 'caregiver'
+            ? (workerForm.medicalSkillsInput.includes('basic_nursing') ? workerForm.medicalSkillsInput : ['basic_nursing', ...workerForm.medicalSkillsInput])
+            : workerForm.serviceType === 'maid'
+              ? (workerForm.maidServicesInput.length ? workerForm.maidServicesInput : null)
+              : workerForm.serviceType === 'babysitter'
+                ? (workerForm.babysitterSkillsInput.length ? workerForm.babysitterSkillsInput : null)
+                : null,
+        special_attributes: workerForm.serviceType === 'chef' && workerForm.chefType
+          ? { chef_type: workerForm.chefType }
+          : workerForm.serviceType === 'caregiver'
+            ? { overnight_available: workerForm.overnightAvailableInput }
+            : workerForm.serviceType === 'maid'
+              ? { brings_supplies: workerForm.maidBringsSupplies }
+              : workerForm.serviceType === 'babysitter'
+                ? { overnight_available: workerForm.babysitterOvernightAvailable, ...(workerForm.babysitterMaxChildren !== '' ? { max_children: Number(workerForm.babysitterMaxChildren) } : {}) }
+                : null,
+        profiles: {
+          full_name: workerForm.fullName,
+          avatar_url: null,
+          city: workerForm.city || null,
+          phone_number: workerForm.phone || null,
+          national_id: workerForm.nationalId,
+        },
+      };
+      setWorkers((prev) => [newWorkerRow, ...prev]);
 
       // Upload documents if any files were selected
       try {
@@ -443,9 +514,14 @@ const Admin = () => {
     } catch {
       // non-critical — just won't show existing previews
     }
-    const isCaregiverWorker = w.service_type === 'caregiver';
-    const caregiverSkills = isCaregiverWorker
+    const caregiverSkills = w.service_type === 'caregiver'
       ? (w.special_tags ?? []).filter(t => CAREGIVER_MEDICAL_SKILLS.includes(t as (typeof CAREGIVER_MEDICAL_SKILLS)[number]))
+      : [];
+    const maidServices = w.service_type === 'maid'
+      ? (w.special_tags ?? []).filter(t => MAID_SERVICES.includes(t as (typeof MAID_SERVICES)[number]))
+      : [];
+    const babysitterSkills = w.service_type === 'babysitter'
+      ? (w.special_tags ?? []).filter(t => BABYSITTER_SKILLS.includes(t as (typeof BABYSITTER_SKILLS)[number]))
       : [];
     setEditForm({
       email: '', password: '',
@@ -465,6 +541,11 @@ const Admin = () => {
       specialTagsInput: w.special_tags ?? [],
       medicalSkillsInput: caregiverSkills,
       overnightAvailableInput: w.special_attributes?.overnight_available ?? false,
+      maidServicesInput: maidServices,
+      maidBringsSupplies: w.special_attributes?.brings_supplies ?? false,
+      babysitterSkillsInput: babysitterSkills,
+      babysitterOvernightAvailable: w.special_attributes?.overnight_available ?? false,
+      babysitterMaxChildren: w.special_attributes?.max_children != null ? String(w.special_attributes.max_children) : '',
     });
   };
 
@@ -491,6 +572,11 @@ const Admin = () => {
         specialTags: editForm.specialTagsInput,
         medicalSkills: editForm.medicalSkillsInput,
         overnightAvailable: editForm.overnightAvailableInput,
+        maidServicesInput: editForm.maidServicesInput,
+        maidBringsSupplies: editForm.maidBringsSupplies,
+        babysitterSkillsInput: editForm.babysitterSkillsInput,
+        babysitterOvernightAvailable: editForm.babysitterOvernightAvailable,
+        babysitterMaxChildren: editForm.babysitterMaxChildren,
       });
       await loadAll();
 
@@ -584,11 +670,28 @@ const Admin = () => {
     if (workerFilters.city && w.profiles?.city !== workerFilters.city) return false;
     if (workerFilters.minRating && Number(w.average_rating ?? 0) < Number(workerFilters.minRating)) return false;
     if (workerFilters.minExperience && (w.years_experience ?? 0) < Number(workerFilters.minExperience)) return false;
+    // driver-specific
     if (workerFilters.hasCar === 'yes' && !w.car_model) return false;
     if (workerFilters.hasCar === 'no' && w.car_model) return false;
     if (workerFilters.filterCarMake && !w.car_model?.toLowerCase().startsWith(workerFilters.filterCarMake.toLowerCase())) return false;
     if (workerFilters.filterCarModelName && !w.car_model?.toLowerCase().includes(workerFilters.filterCarModelName.toLowerCase())) return false;
     if (workerFilters.filterCarYear && !w.car_model?.endsWith(workerFilters.filterCarYear)) return false;
+    // chef-specific
+    if (workerFilters.filterChefType && w.special_attributes?.chef_type !== workerFilters.filterChefType) return false;
+    if (workerFilters.filterCuisine && !w.special_tags?.includes(workerFilters.filterCuisine)) return false;
+    if (workerFilters.filterSpecialty && !w.special_tags?.includes(workerFilters.filterSpecialty)) return false;
+    // caregiver-specific
+    if (workerFilters.filterCaregiverSkill && !w.special_tags?.includes(workerFilters.filterCaregiverSkill)) return false;
+    if (workerFilters.filterCaregiverOvernight === 'yes' && !w.special_attributes?.overnight_available) return false;
+    if (workerFilters.filterCaregiverOvernight === 'no' && w.special_attributes?.overnight_available) return false;
+    // maid-specific
+    if (workerFilters.filterMaidService && !w.special_tags?.includes(workerFilters.filterMaidService)) return false;
+    if (workerFilters.filterMaidSupplies === 'yes' && !w.special_attributes?.brings_supplies) return false;
+    if (workerFilters.filterMaidSupplies === 'no' && w.special_attributes?.brings_supplies) return false;
+    // babysitter-specific
+    if (workerFilters.filterBabysitterSkill && !w.special_tags?.includes(workerFilters.filterBabysitterSkill)) return false;
+    if (workerFilters.filterBabysitterOvernight === 'yes' && !w.special_attributes?.overnight_available) return false;
+    if (workerFilters.filterBabysitterOvernight === 'no' && w.special_attributes?.overnight_available) return false;
     return true;
   });
 
@@ -715,7 +818,8 @@ const Admin = () => {
                 {/* ── Filter panel ── */}
                 {filtersOpen && (
                   <div className="px-6 pb-4 border-b">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {/* ── Base filters row ── */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Name</label>
                         <Input
@@ -727,7 +831,18 @@ const Admin = () => {
                       </div>
                       <div className="space-y-1">
                         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Service</label>
-                        <Select value={workerFilters.serviceType || undefined} onValueChange={(v) => setWFilter('serviceType', v)}>
+                        <Select
+                          value={workerFilters.serviceType || undefined}
+                          onValueChange={(v) => setWorkerFilters((prev) => ({
+                            ...prev,
+                            serviceType: v,
+                            hasCar: '', filterCarMake: '', filterCarModelName: '', filterCarYear: '',
+                            filterChefType: '', filterCuisine: '', filterSpecialty: '',
+                            filterCaregiverSkill: '', filterCaregiverOvernight: '',
+                            filterMaidService: '', filterMaidSupplies: '',
+                            filterBabysitterSkill: '', filterBabysitterOvernight: '',
+                          }))}
+                        >
                           <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="All services" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="chef">Chef</SelectItem>
@@ -771,66 +886,179 @@ const Admin = () => {
                           className="h-8 text-sm"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Has Car</label>
-                        <Select
-                          value={workerFilters.hasCar || undefined}
-                          onValueChange={(v) => {
-                            setWorkerFilters((prev) => ({ ...prev, hasCar: v, filterCarMake: '', filterCarModelName: '', filterCarYear: '' }));
-                          }}
-                        >
-                          <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="yes">Yes</SelectItem>
-                            <SelectItem value="no">No</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
 
-                    {/* ── Car model filter row (only when Has Car = Yes) ── */}
-                    {workerFilters.hasCar === 'yes' && (
-                      <div className="mt-3 grid grid-cols-3 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Car Make</label>
+                    {/* ── Service-specific filter rows ── */}
+                    {workerFilters.serviceType === 'driver' && (
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <div className="space-y-1 min-w-[140px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Has Car</label>
                           <Select
-                            value={workerFilters.filterCarMake || undefined}
-                            onValueChange={(v) => setWorkerFilters((prev) => ({ ...prev, filterCarMake: v, filterCarModelName: '' }))}
+                            value={workerFilters.hasCar || undefined}
+                            onValueChange={(v) => setWorkerFilters((prev) => ({ ...prev, hasCar: v, filterCarMake: '', filterCarModelName: '', filterCarYear: '' }))}
                           >
-                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any make" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              {Object.keys(CAR_DATA).map((make) => (
-                                <SelectItem key={make} value={make}>{make}</SelectItem>
+                              <SelectItem value="yes">Yes</SelectItem>
+                              <SelectItem value="no">No</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {workerFilters.hasCar === 'yes' && (
+                          <>
+                            <div className="space-y-1 min-w-[150px]">
+                              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Car Make</label>
+                              <Select
+                                value={workerFilters.filterCarMake || undefined}
+                                onValueChange={(v) => setWorkerFilters((prev) => ({ ...prev, filterCarMake: v, filterCarModelName: '' }))}
+                              >
+                                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any make" /></SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(CAR_DATA).map((make) => (
+                                    <SelectItem key={make} value={make}>{make}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1 min-w-[150px]">
+                              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Car Model</label>
+                              <Select
+                                value={workerFilters.filterCarModelName || undefined}
+                                onValueChange={(v) => setWFilter('filterCarModelName', v)}
+                                disabled={!workerFilters.filterCarMake}
+                              >
+                                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any model" /></SelectTrigger>
+                                <SelectContent>
+                                  {(CAR_DATA[workerFilters.filterCarMake] ?? []).map((model) => (
+                                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1 min-w-[120px]">
+                              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</label>
+                              <Select
+                                value={workerFilters.filterCarYear || undefined}
+                                onValueChange={(v) => setWFilter('filterCarYear', v)}
+                              >
+                                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any year" /></SelectTrigger>
+                                <SelectContent>
+                                  {CAR_YEARS.map((year) => (
+                                    <SelectItem key={year} value={year}>{year}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {workerFilters.serviceType === 'chef' && (
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <div className="space-y-1 min-w-[150px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Chef Type</label>
+                          <Select value={workerFilters.filterChefType || undefined} onValueChange={(v) => setWFilter('filterChefType', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="premium">Premium</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1 min-w-[160px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Cuisine</label>
+                          <Select value={workerFilters.filterCuisine || undefined} onValueChange={(v) => setWFilter('filterCuisine', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any cuisine" /></SelectTrigger>
+                            <SelectContent>
+                              {CUISINE_OPTIONS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1 min-w-[160px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Specialty</label>
+                          <Select value={workerFilters.filterSpecialty || undefined} onValueChange={(v) => setWFilter('filterSpecialty', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any specialty" /></SelectTrigger>
+                            <SelectContent>
+                              {SPECIALTY_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {workerFilters.serviceType === 'caregiver' && (
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <div className="space-y-1 min-w-[200px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Medical Skill</label>
+                          <Select value={workerFilters.filterCaregiverSkill || undefined} onValueChange={(v) => setWFilter('filterCaregiverSkill', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any skill" /></SelectTrigger>
+                            <SelectContent>
+                              {CAREGIVER_MEDICAL_SKILLS.map((s) => (
+                                <SelectItem key={s} value={s}>{CAREGIVER_MEDICAL_SKILL_LABELS[s].en}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Car Model</label>
-                          <Select
-                            value={workerFilters.filterCarModelName || undefined}
-                            onValueChange={(v) => setWFilter('filterCarModelName', v)}
-                            disabled={!workerFilters.filterCarMake}
-                          >
-                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any model" /></SelectTrigger>
+                        <div className="space-y-1 min-w-[160px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overnight</label>
+                          <Select value={workerFilters.filterCaregiverOvernight || undefined} onValueChange={(v) => setWFilter('filterCaregiverOvernight', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              {(CAR_DATA[workerFilters.filterCarMake] ?? []).map((model) => (
-                                <SelectItem key={model} value={model}>{model}</SelectItem>
+                              <SelectItem value="yes">Available</SelectItem>
+                              <SelectItem value="no">Not Available</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {workerFilters.serviceType === 'maid' && (
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <div className="space-y-1 min-w-[200px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Service</label>
+                          <Select value={workerFilters.filterMaidService || undefined} onValueChange={(v) => setWFilter('filterMaidService', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any service" /></SelectTrigger>
+                            <SelectContent>
+                              {MAID_SERVICES.map((s) => (
+                                <SelectItem key={s} value={s}>{MAID_SERVICE_LABELS[s].en}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</label>
-                          <Select
-                            value={workerFilters.filterCarYear || undefined}
-                            onValueChange={(v) => setWFilter('filterCarYear', v)}
-                          >
-                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any year" /></SelectTrigger>
+                        <div className="space-y-1 min-w-[160px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Brings Supplies</label>
+                          <Select value={workerFilters.filterMaidSupplies || undefined} onValueChange={(v) => setWFilter('filterMaidSupplies', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
                             <SelectContent>
-                              {CAR_YEARS.map((year) => (
-                                <SelectItem key={year} value={year}>{year}</SelectItem>
+                              <SelectItem value="yes">Yes</SelectItem>
+                              <SelectItem value="no">No</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+
+                    {workerFilters.serviceType === 'babysitter' && (
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <div className="space-y-1 min-w-[200px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Skill</label>
+                          <Select value={workerFilters.filterBabysitterSkill || undefined} onValueChange={(v) => setWFilter('filterBabysitterSkill', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any skill" /></SelectTrigger>
+                            <SelectContent>
+                              {BABYSITTER_SKILLS.map((s) => (
+                                <SelectItem key={s} value={s}>{BABYSITTER_SKILL_LABELS[s].en}</SelectItem>
                               ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1 min-w-[160px]">
+                          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Overnight</label>
+                          <Select value={workerFilters.filterBabysitterOvernight || undefined} onValueChange={(v) => setWFilter('filterBabysitterOvernight', v)}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Any" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="yes">Available</SelectItem>
+                              <SelectItem value="no">Not Available</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -896,9 +1124,47 @@ const Admin = () => {
                                 )}
                               </div>
                             )}
+                            {['caregiver', 'maid', 'babysitter'].includes(w.service_type) && (
+                              <div className="flex flex-col gap-1">
+                                {w.special_tags && w.special_tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {w.special_tags.slice(0, 3).map((tag) => (
+                                      <span key={tag} className="px-1.5 py-0.5 rounded-full bg-muted text-[11px] font-medium text-muted-foreground border">
+                                        {tag.replace(/_/g, ' ')}
+                                      </span>
+                                    ))}
+                                    {w.special_tags.length > 3 && (
+                                      <span className="px-1.5 py-0.5 rounded-full bg-muted text-[11px] text-muted-foreground border">
+                                        +{w.special_tags.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {w.service_type === 'caregiver' && w.special_attributes?.overnight_available && (
+                                  <span className="text-[11px] text-muted-foreground">Overnight</span>
+                                )}
+                                {w.service_type === 'maid' && w.special_attributes?.brings_supplies && (
+                                  <span className="text-[11px] text-muted-foreground">Brings supplies</span>
+                                )}
+                                {w.service_type === 'babysitter' && (
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {[
+                                      w.special_attributes?.overnight_available ? 'Overnight' : '',
+                                      w.special_attributes?.max_children ? `Max ${w.special_attributes.max_children} children` : '',
+                                    ].filter(Boolean).join(' · ') || ''}
+                                  </span>
+                                )}
+                                {(!w.special_tags || w.special_tags.length === 0) &&
+                                  !w.special_attributes?.overnight_available &&
+                                  !w.special_attributes?.brings_supplies &&
+                                  !w.special_attributes?.max_children && (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </div>
+                            )}
                             {((w.service_type === 'driver' && !w.car_model) ||
                               (w.service_type === 'chef' && (!w.special_tags || w.special_tags.length === 0)) ||
-                              !['driver', 'chef'].includes(w.service_type)) && (
+                              !['driver', 'chef', 'caregiver', 'maid', 'babysitter'].includes(w.service_type)) && (
                               <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
@@ -1488,6 +1754,89 @@ const Admin = () => {
                 </div>
               </>
             )}
+            {/* ── Maid-specific ── */}
+            {workerForm.serviceType === 'maid' && (
+              <>
+                <div className="space-y-3">
+                  <Label className="font-medium">Services Offered</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MAID_SERVICES.map(service => (
+                      <div key={service} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`add-maid-${service}`}
+                          checked={(workerForm.maidServicesInput as string[]).includes(service)}
+                          onCheckedChange={(checked) => {
+                            const current = workerForm.maidServicesInput as string[];
+                            setWorkerForm(prev => ({
+                              ...prev,
+                              maidServicesInput: checked ? [...current, service] : current.filter(s => s !== service),
+                            }));
+                          }}
+                        />
+                        <Label htmlFor={`add-maid-${service}`} className="text-sm font-normal cursor-pointer">
+                          {MAID_SERVICE_LABELS[service].en}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={workerForm.maidBringsSupplies as boolean}
+                    onCheckedChange={(v) => setWorkerForm(prev => ({ ...prev, maidBringsSupplies: v }))}
+                    id="add-maid-supplies"
+                  />
+                  <Label htmlFor="add-maid-supplies">Brings own cleaning supplies</Label>
+                </div>
+              </>
+            )}
+            {/* ── Babysitter-specific ── */}
+            {workerForm.serviceType === 'babysitter' && (
+              <>
+                <div className="space-y-3">
+                  <Label className="font-medium">Age Groups &amp; Skills</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {BABYSITTER_SKILLS.map(skill => (
+                      <div key={skill} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`add-bs-${skill}`}
+                          checked={(workerForm.babysitterSkillsInput as string[]).includes(skill)}
+                          onCheckedChange={(checked) => {
+                            const current = workerForm.babysitterSkillsInput as string[];
+                            setWorkerForm(prev => ({
+                              ...prev,
+                              babysitterSkillsInput: checked ? [...current, skill] : current.filter(s => s !== skill),
+                            }));
+                          }}
+                        />
+                        <Label htmlFor={`add-bs-${skill}`} className="text-sm font-normal cursor-pointer">
+                          {BABYSITTER_SKILL_LABELS[skill].en}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={workerForm.babysitterOvernightAvailable as boolean}
+                    onCheckedChange={(v) => setWorkerForm(prev => ({ ...prev, babysitterOvernightAvailable: v }))}
+                    id="add-bs-overnight"
+                  />
+                  <Label htmlFor="add-bs-overnight">Available for overnight stays</Label>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Max Children at Once</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    placeholder="e.g. 3"
+                    value={workerForm.babysitterMaxChildren as string}
+                    onChange={e => setWorkerForm(prev => ({ ...prev, babysitterMaxChildren: e.target.value }))}
+                  />
+                </div>
+              </>
+            )}
             {/* ── Documents ── */}
             <div className="border-t pt-4 space-y-4">
               <h4 className="font-medium text-sm">Documents</h4>
@@ -1749,6 +2098,89 @@ const Admin = () => {
                     id="edit-overnight-available"
                   />
                   <Label htmlFor="edit-overnight-available">Available for overnight stays</Label>
+                </div>
+              </>
+            )}
+            {/* ── Maid-specific ── */}
+            {editForm.serviceType === 'maid' && (
+              <>
+                <div className="space-y-3">
+                  <Label className="font-medium">Services Offered</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MAID_SERVICES.map(service => (
+                      <div key={service} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`edit-maid-${service}`}
+                          checked={(editForm.maidServicesInput as string[]).includes(service)}
+                          onCheckedChange={(checked) => {
+                            const current = editForm.maidServicesInput as string[];
+                            setEditForm(prev => ({
+                              ...prev,
+                              maidServicesInput: checked ? [...current, service] : current.filter(s => s !== service),
+                            }));
+                          }}
+                        />
+                        <Label htmlFor={`edit-maid-${service}`} className="text-sm font-normal cursor-pointer">
+                          {MAID_SERVICE_LABELS[service].en}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editForm.maidBringsSupplies as boolean}
+                    onCheckedChange={(v) => setEditForm(prev => ({ ...prev, maidBringsSupplies: v }))}
+                    id="edit-maid-supplies"
+                  />
+                  <Label htmlFor="edit-maid-supplies">Brings own cleaning supplies</Label>
+                </div>
+              </>
+            )}
+            {/* ── Babysitter-specific ── */}
+            {editForm.serviceType === 'babysitter' && (
+              <>
+                <div className="space-y-3">
+                  <Label className="font-medium">Age Groups &amp; Skills</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {BABYSITTER_SKILLS.map(skill => (
+                      <div key={skill} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`edit-bs-${skill}`}
+                          checked={(editForm.babysitterSkillsInput as string[]).includes(skill)}
+                          onCheckedChange={(checked) => {
+                            const current = editForm.babysitterSkillsInput as string[];
+                            setEditForm(prev => ({
+                              ...prev,
+                              babysitterSkillsInput: checked ? [...current, skill] : current.filter(s => s !== skill),
+                            }));
+                          }}
+                        />
+                        <Label htmlFor={`edit-bs-${skill}`} className="text-sm font-normal cursor-pointer">
+                          {BABYSITTER_SKILL_LABELS[skill].en}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={editForm.babysitterOvernightAvailable as boolean}
+                    onCheckedChange={(v) => setEditForm(prev => ({ ...prev, babysitterOvernightAvailable: v }))}
+                    id="edit-bs-overnight"
+                  />
+                  <Label htmlFor="edit-bs-overnight">Available for overnight stays</Label>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm font-medium">Max Children at Once</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={20}
+                    placeholder="e.g. 3"
+                    value={editForm.babysitterMaxChildren as string}
+                    onChange={e => setEditForm(prev => ({ ...prev, babysitterMaxChildren: e.target.value }))}
+                  />
                 </div>
               </>
             )}
