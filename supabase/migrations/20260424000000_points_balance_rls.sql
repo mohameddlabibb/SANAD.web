@@ -1,0 +1,7 @@
+-- Allow authenticated users to update their own profile row (needed for points_balance updates)
+DROP POLICY IF EXISTS "profiles_update_own" ON profiles;
+CREATE POLICY "profiles_update_own"
+  ON profiles FOR UPDATE
+  TO authenticated
+  USING  (id = auth.uid())
+  WITH CHECK (id = auth.uid());
