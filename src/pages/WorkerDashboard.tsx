@@ -91,6 +91,24 @@ const WorkerDashboard = () => {
 
   useEffect(() => {
     if (!user?.id) return;
+    const channel = supabase
+      .channel(`worker-bookings-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bookings', filter: `worker_id=eq.${user.id}` },
+        () => { loadBookings(); },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `worker_id=eq.${user.id}` },
+        () => { loadBookings(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, loadBookings]);
+
+  useEffect(() => {
+    if (!user?.id) return;
     setRequestsLoading(true);
     supabase
       .from('workers')
@@ -191,7 +209,7 @@ const WorkerDashboard = () => {
     }
   };
 
-  const active = bookings.filter((b) => ['pending', 'deposit_pending', 'deposit_paid', 'accepted', 'ongoing'].includes(b.status));
+  const active = bookings.filter((b) => ['deposit_paid', 'accepted', 'ongoing'].includes(b.status));
   const done = bookings.filter((b) => ['completed', 'cancelled'].includes(b.status));
 
   const BookingCard = ({ booking }: { booking: BookingRow }) => {
@@ -256,7 +274,7 @@ const WorkerDashboard = () => {
                   <ArrowRight className="h-3 w-3" />
                 </Button>
               )}
-              {['pending', 'accepted', 'deposit_pending', 'deposit_paid'].includes(booking.status) && (
+              {['accepted', 'deposit_paid'].includes(booking.status) && (
                 <Button
                   size="sm"
                   variant="ghost"

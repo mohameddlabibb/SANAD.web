@@ -473,6 +473,24 @@ export async function approveTransaction(tx: AdminTransactionRow): Promise<void>
       : 'Your final payment has been approved. Thank you!',
     booking_id: tx.invoice?.booking_id ?? undefined,
   });
+
+  // 6. Notify worker when deposit is approved so they see the booking for the first time
+  if (isDeposit && tx.invoice?.booking_id) {
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('worker_id, booking_date')
+      .eq('id', tx.invoice.booking_id)
+      .single();
+
+    if (booking?.worker_id) {
+      await createNotification({
+        receiver_id: booking.worker_id,
+        title: 'New Booking Request',
+        message: `A new booking request with deposit paid has been confirmed for ${booking.booking_date}. Please check your dashboard.`,
+        booking_id: tx.invoice.booking_id,
+      });
+    }
+  }
 }
 
 export async function rejectTransaction(
@@ -482,10 +500,20 @@ export async function rejectTransaction(
   bookingId?: string | null,
 ): Promise<void> {
   await updateTransactionStatus(id, 'rejected', adminNotes);
+
+  // Cancel the booking so the time slot is freed up
+  if (bookingId) {
+    await supabase
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('id', bookingId)
+      .eq('status', 'deposit_pending');
+  }
+
   await createNotification({
     receiver_id: userId,
     title: 'Payment Rejected',
-    message: `Your InstaPay payment was rejected. Reason: ${adminNotes}`,
+    message: `Your InstaPay payment was rejected. Reason: ${adminNotes}. Your booking has been cancelled and the time slot is now available again.`,
     booking_id: bookingId ?? undefined,
   });
 }

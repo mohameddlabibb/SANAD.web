@@ -198,11 +198,11 @@ const Payment = () => {
         message: notificationMessage,
       });
 
-      if (paymentType === 'deposit' && booking.worker_id) {
+      if (paymentType === 'deposit' && booking.worker_id && paymentMethod !== 'instapay') {
         await createNotification({
           receiver_id: booking.worker_id,
-          title: 'Deposit Paid',
-          message: `A deposit has been paid for your booking on ${booking.booking_date}. Please check your bookings.`,
+          title: 'New Booking Request',
+          message: `A new booking request with deposit paid has been confirmed for ${booking.booking_date}. Please check your dashboard.`,
           booking_id: booking.id,
         });
       }
