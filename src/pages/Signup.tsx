@@ -68,12 +68,14 @@ const Signup = () => {
               type="tel"
               placeholder={t('auth.phonePlaceholder')}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              maxLength={11}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
             />
             <Input
               placeholder={t('auth.nationalIdPlaceholder')}
               value={nationalId}
-              onChange={(e) => setNationalId(e.target.value)}
+              maxLength={14}
+              onChange={(e) => setNationalId(e.target.value.replace(/\D/g, '').slice(0, 14))}
             />
             <div className="flex gap-6">
               {['Male', 'Female'].map((g) => (
