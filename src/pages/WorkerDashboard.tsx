@@ -35,6 +35,7 @@ interface BookingRow {
 
 const STATUS_BADGE: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
+  pending_deposit: 'bg-yellow-100 text-yellow-800',
   deposit_pending: 'bg-orange-100 text-orange-800',
   deposit_paid: 'bg-blue-100 text-blue-800',
   accepted: 'bg-blue-100 text-blue-800',
@@ -209,7 +210,7 @@ const WorkerDashboard = () => {
     }
   };
 
-  const active = bookings.filter((b) => ['deposit_paid', 'accepted', 'ongoing'].includes(b.status));
+  const active = bookings.filter((b) => ['deposit_pending', 'deposit_paid', 'accepted', 'ongoing'].includes(b.status));
   const done = bookings.filter((b) => ['completed', 'cancelled'].includes(b.status));
 
   const BookingCard = ({ booking }: { booking: BookingRow }) => {
