@@ -47,11 +47,11 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
 
   return (
     <Link to={href} className="block h-full">
-    <Card className={`group hover:shadow-card transition-all duration-300 overflow-hidden cursor-pointer flex flex-col h-full ${emergencyMode ? 'hover:border-red-400/50 ring-1 ring-red-200' : 'hover:border-primary/30'} ${isPremiumChef ? 'ring-2 ring-amber-400/50' : ''}`}>
+    <Card className={`group hover:shadow-card transition-all duration-300 overflow-hidden cursor-pointer flex flex-col h-full ${emergencyMode ? 'hover:border-emergency/50 ring-1 ring-emergency-muted' : 'hover:border-primary/30'} ${isPremiumChef ? 'ring-2 ring-amber-400/50' : ''}`}>
       <CardContent className="p-0 flex flex-col h-full">
         {/* Provider Image */}
-        <div className={`relative h-48 flex items-center justify-center ${isPremiumChef ? 'bg-gradient-to-br from-amber-100 to-amber-50' : emergencyMode ? 'bg-gradient-to-br from-red-50 to-red-100/30' : 'bg-gradient-to-br from-primary/10 to-primary/5'}`}>
-          <div className={`w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-3xl font-heading ${isPremiumChef ? 'bg-amber-200 text-amber-800' : emergencyMode ? 'bg-red-100 text-red-700' : 'bg-primary/20 text-primary'}`}>
+        <div className={`relative h-48 flex items-center justify-center ${isPremiumChef ? 'bg-gradient-to-br from-amber-100 to-amber-50' : emergencyMode ? 'bg-gradient-to-br from-emergency-light to-emergency-muted/30' : 'bg-gradient-to-br from-primary/10 to-primary/5'}`}>
+          <div className={`w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-3xl font-heading ${isPremiumChef ? 'bg-amber-200 text-amber-800' : emergencyMode ? 'bg-emergency-muted text-emergency-dark' : 'bg-primary/20 text-primary'}`}>
             {provider.image ? (
               <img src={provider.image} alt={displayName} className="w-full h-full object-cover" />
             ) : (
@@ -60,7 +60,7 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
           </div>
           <div className="absolute top-3 end-3 flex flex-col gap-1.5">
             {emergencyMode && (
-              <Badge className="bg-red-600 text-white gap-1">
+              <Badge className="bg-emergency text-white gap-1">
                 <Zap className="h-3 w-3" />
                 {t('providerDetail.emergency', 'Emergency')}
               </Badge>
@@ -102,10 +102,10 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
           {/* Available slots in emergency mode */}
           {emergencyMode && availableSlots && availableSlots.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-red-600 mb-1.5">{t('servicesPage.availableToday', 'Available today')}</p>
+              <p className="text-xs font-medium text-emergency mb-1.5">{t('servicesPage.availableToday', 'Available today')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {availableSlots.slice(0, 5).map((slot) => (
-                  <span key={slot} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-md font-medium">
+                  <span key={slot} className="text-xs bg-emergency-light text-emergency-dark border border-emergency-muted px-2 py-0.5 rounded-md font-medium">
                     {slot}
                   </span>
                 ))}
@@ -149,7 +149,7 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
               <span className={`text-2xl font-bold ${isPremiumChef ? 'text-amber-600' : 'text-foreground'}`}>{provider.price}</span>
               <span className="text-sm text-muted-foreground"> EGP/{t('servicesPage.hour')}</span>
             </div>
-            <Button size="sm" className={`rounded-xl ${emergencyMode ? 'bg-red-600 hover:bg-red-700 text-white' : ''}`}>
+            <Button size="sm" className={`rounded-xl ${emergencyMode ? 'bg-emergency hover:bg-emergency-dark text-white' : ''}`}>
               {emergencyMode ? t('providerDetail.bookEmergency', 'Book Now') : t('common.bookNow')}
             </Button>
           </div>

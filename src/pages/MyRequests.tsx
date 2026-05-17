@@ -141,7 +141,7 @@ const MyRequests = () => {
                                 {booking.workers?.service_type ?? booking.booking_type ?? '—'}
                               </h3>
                               {booking.booking_type === 'emergency' && (
-                                <Badge className="bg-red-600 text-white text-xs">
+                                <Badge className="bg-emergency text-white text-xs">
                                   {t('myRequests.emergency', 'Emergency')}
                                 </Badge>
                               )}
@@ -208,7 +208,7 @@ const MyRequests = () => {
                                 {booking.workers?.service_type ?? booking.booking_type ?? '—'}
                               </h3>
                               {booking.booking_type === 'emergency' && (
-                                <Badge className="bg-red-600 text-white text-xs">
+                                <Badge className="bg-emergency text-white text-xs">
                                   {t('myRequests.emergency', 'Emergency')}
                                 </Badge>
                               )}

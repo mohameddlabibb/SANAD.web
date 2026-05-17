@@ -69,15 +69,6 @@ const BiddingRequestDetail = () => {
       const acceptedBid = request.bids.find((b) => b.id === bidId);
       const rejectedBids = request.bids.filter((b) => b.id !== bidId && b.status === 'pending');
 
-      if (acceptedBid) {
-        await createNotification({
-          receiver_id: acceptedBid.worker_id,
-          title: 'Bid Accepted',
-          message: `Your bid was accepted! A booking has been created.`,
-          booking_id: bookingId,
-        });
-      }
-
       for (const bid of rejectedBids) {
         await createNotification({
           receiver_id: bid.worker_id,

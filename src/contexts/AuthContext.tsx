@@ -21,6 +21,7 @@ interface User {
   role: string;
   nationalId: string;
   createdAt: string;
+  gender: string;
 }
 
 interface AuthContextType {
@@ -28,7 +29,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isInitializing: boolean;
   login: (email: string, password: string) => Promise<User>;
-  signup: (name: string, email: string, phone: string, password: string, nationalId: string) => Promise<void>;
+  signup: (name: string, email: string, phone: string, password: string, nationalId: string, gender: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<User>) => Promise<void>;
 }
@@ -50,6 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     role: profile.role ?? 'user',
     nationalId: profile.national_id ?? '',
     createdAt: profile.created_at ?? '',
+    gender: profile.gender ?? '',
   });
 
   useEffect(() => {
@@ -111,7 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return mappedUser;
   };
 
-  const signup = async (name: string, email: string, phone: string, password: string, nationalId: string) => {
+  const signup = async (name: string, email: string, phone: string, password: string, nationalId: string, gender: string) => {
     const { user: authUser } = await signUp(email, password);
 
     if (!authUser) {
@@ -124,6 +126,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       phone,
       nationalId,
+      gender: gender || null,
     });
 
     setUser(mapProfileToUser(profile));

@@ -57,6 +57,12 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        emergency: {
+          DEFAULT: '#FF6D00',
+          dark: '#CC5800',
+          light: '#FFF3E0',
+          muted: '#FFE0B2',
+        },
         sanad: {
           teal: "hsl(var(--sanad-teal))",
           "teal-light": "hsl(var(--sanad-teal-light))",

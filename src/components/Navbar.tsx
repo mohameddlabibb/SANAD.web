@@ -23,7 +23,7 @@ export const Navbar = () => {
           {/* Logo */}
           <Link to={user?.role === 'admin' ? '/admin' : '/'} className="flex items-center gap-2">
             <img src={logo} alt="Sanad" className="h-12 w-auto" />
-            <span className="text-xl font-heading text-foreground">Sanad</span>
+            <span className="text-xl text-foreground" style={{ fontFamily: "'Lily Script One', cursive" }}>Sanad</span>
           </Link>
 
           {/* Desktop Navigation — hidden for admin */}

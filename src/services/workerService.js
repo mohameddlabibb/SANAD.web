@@ -48,7 +48,9 @@ export async function getWorkers(serviceType) {
   let query = supabase
     .from('workers')
     .select('*, monthly_rate, total_reviews, car_model, profiles(full_name, avatar_url, city)')
-    .eq('documents_submitted', true);
+    .eq('documents_submitted', true)
+    .eq('is_hidden', false)
+    .eq('account_status', 'approved');
 
   if (serviceType && serviceType !== 'all') {
     const dbType = serviceTypeReverseMap[serviceType];

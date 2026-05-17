@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Star, BadgeCheck, Clock, Crown, CalendarIcon, ArrowLeft, Minus, Plus, LocateFixed } from 'lucide-react';
 import { LocationPickerModal } from '@/components/LocationPickerModal';
 import { cn } from '@/lib/utils';
@@ -87,6 +88,7 @@ const ProviderDetail = () => {
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [femaleAcknowledged, setFemaleAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reviews, setReviews] = useState<WorkerReview[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -289,6 +291,11 @@ const ProviderDetail = () => {
     if (!user.city || !user.address) {
       navigate('/profile');
       toast({ title: t('profile.cityAddressRequired', 'Please complete your profile'), description: t('profile.cityAddressRequiredDesc', 'City and Address are required before booking a service.'), variant: 'destructive' });
+      return;
+    }
+
+    if (!femaleAcknowledged) {
+      toast({ title: t('common.error'), description: t('booking.femaleAckRequired', 'Please acknowledge the female worker condition.'), variant: 'destructive' });
       return;
     }
 
@@ -1114,9 +1121,25 @@ const ProviderDetail = () => {
                       <span className="text-3xl font-bold text-primary">EGP {totalCost.toLocaleString()}</span>
                     </div>
 
+                    <div
+                      className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${femaleAcknowledged ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+                      onClick={() => setFemaleAcknowledged((v) => !v)}
+                    >
+                      <Checkbox
+                        id="female-ack-booking"
+                        checked={femaleAcknowledged}
+                        onCheckedChange={(checked) => setFemaleAcknowledged(!!checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-0.5 shrink-0"
+                      />
+                      <label htmlFor="female-ack-booking" className="text-sm leading-snug cursor-pointer select-none">
+                        {t('booking.femaleWorkerAck', 'I understand that if the assigned worker is female, a female must be present at the location throughout the service.')}
+                      </label>
+                    </div>
+
                     <Button
                       size="lg"
-                      className={cn('w-full', bookingType === 'emergency' && 'bg-red-600 hover:bg-red-700 text-white')}
+                      className={cn('w-full', bookingType === 'emergency' && 'bg-emergency hover:bg-emergency-dark text-white')}
                       onClick={handleBookNow}
                       disabled={
                         isSubmitting ||

@@ -32,12 +32,18 @@ export interface AdminWorkerRow {
   car_model: string | null;
   special_tags: string[] | null;
   special_attributes: Record<string, string> | null;
+  is_hidden: boolean;
+  account_status: string;
+  rejection_reason: string | null;
+  documents_submitted: boolean;
   profiles: {
     full_name: string | null;
     avatar_url: string | null;
     city: string | null;
     phone_number: string | null;
     national_id: string | null;
+    gender: string | null;
+    email: string | null;
   } | null;
 }
 
@@ -45,7 +51,7 @@ export async function getAllWorkers(): Promise<AdminWorkerRow[]> {
   const [workersRes, jobsRes] = await Promise.all([
     supabase
       .from('workers')
-      .select('id, service_type, average_rating, years_experience, hourly_rate, monthly_rate, total_jobs, nationality, car_model, special_tags, special_attributes, profiles(full_name, avatar_url, city, phone_number, national_id)'),
+      .select('id, service_type, average_rating, years_experience, hourly_rate, monthly_rate, total_jobs, nationality, car_model, special_tags, special_attributes, is_hidden, account_status, rejection_reason, documents_submitted, profiles(full_name, avatar_url, city, phone_number, national_id, gender, email)'),
     supabase
       .from('bookings')
       .select('worker_id')
@@ -75,6 +81,7 @@ export interface WorkerFormInput {
   phone: string;
   city: string;
   nationality: string;
+  gender: string;
   serviceType: string;
   dob: string;            // YYYY-MM-DD
   yearsExperience: number | null;
@@ -119,6 +126,7 @@ export async function createWorker(input: WorkerFormInput): Promise<string> {
         city: input.city,
         nationalId: input.nationalId,
         nationality: input.nationality,
+        gender: input.gender,
         serviceType: input.serviceType,
         dob: input.dob,
         yearsExperience: input.yearsExperience,
@@ -155,6 +163,7 @@ export async function updateWorker(
       phone_number: input.phone || null,
       city: input.city || null,
       national_id: input.nationalId || null,
+      gender: input.gender || null,
     })
     .eq('id', profileId);
   if (profileError) throw profileError;
@@ -222,6 +231,14 @@ export async function deleteWorker(workerId: string): Promise<void> {
   if (profileError) throw profileError;
 }
 
+export async function toggleWorkerVisibility(workerId: string, isHidden: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('workers')
+    .update({ is_hidden: isHidden })
+    .eq('id', workerId);
+  if (error) throw error;
+}
+
 export async function getWorkersByServiceType(serviceType: string): Promise<AdminWorkerRow[]> {
   const { data, error } = await supabase
     .from('workers')
@@ -243,6 +260,95 @@ export async function updateWorkerPricing(
     .eq('id', workerId);
 
   if (error) throw error;
+}
+
+// ─── Worker Account Approvals ─────────────────────────────────────────────────
+
+export async function getPendingApprovalWorkers(): Promise<AdminWorkerRow[]> {
+  const { data, error } = await supabase
+    .from('workers')
+    .select('id, service_type, average_rating, years_experience, hourly_rate, monthly_rate, nationality, car_model, special_tags, special_attributes, is_hidden, account_status, rejection_reason, documents_submitted, profiles(full_name, avatar_url, city, phone_number, national_id, gender, email)')
+    .eq('documents_submitted', true)
+    .eq('account_status', 'pending')
+    .order('id', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((w) => ({ ...w, total_jobs: null })) as AdminWorkerRow[];
+}
+
+export async function approveWorker(workerId: string): Promise<void> {
+  const { error } = await supabase
+    .from('workers')
+    .update({ account_status: 'approved', is_hidden: false })
+    .eq('id', workerId);
+  if (error) throw error;
+
+  await createNotification({
+    receiver_id: workerId,
+    title: 'Account Approved',
+    message: 'Congratulations! Your SANAD worker account has been approved. You are now visible to clients.',
+  });
+}
+
+export async function rejectWorker(
+  workerId: string,
+  reason: string,
+  workerEmail: string,
+  workerName: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('workers')
+    .update({ account_status: 'rejected', rejection_reason: reason })
+    .eq('id', workerId);
+  if (error) throw error;
+
+  await createNotification({
+    receiver_id: workerId,
+    title: 'Account Application Update',
+    message: `Your account application was not approved. Reason: ${reason}`,
+  });
+
+  // Send rejection email via Edge Function
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-worker-rejection-email`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ workerEmail, workerName, reason }),
+      },
+    ).catch(() => {/* non-critical — notification already sent in-app */});
+  }
+}
+
+export async function getWorkerDocumentSignedUrls(
+  workerId: string,
+): Promise<{ document_type: string; front_url: string | null; back_url: string | null }[]> {
+  const docs = await getWorkerDocuments(workerId);
+
+  return Promise.all(
+    docs.map(async (doc) => {
+      const signedFront = doc.front_url
+        ? (await supabase.storage.from('worker-docs').createSignedUrl(
+            doc.front_url.split('/worker-docs/')[1] ?? doc.front_url,
+            3600,
+          )).data?.signedUrl ?? doc.front_url
+        : null;
+
+      const signedBack = doc.back_url
+        ? (await supabase.storage.from('worker-docs').createSignedUrl(
+            doc.back_url.split('/worker-docs/')[1] ?? doc.back_url,
+            3600,
+          )).data?.signedUrl ?? doc.back_url
+        : null;
+
+      return { document_type: doc.document_type, front_url: signedFront, back_url: signedBack };
+    }),
+  );
 }
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
@@ -335,13 +441,7 @@ export async function approveTransaction(tx: AdminTransactionRow): Promise<void>
     await updateBookingStatus(tx.invoice.booking_id, newStatus);
   }
 
-  // 3. Award points only on balance payment (full service was completed)
-  if (!isWalletTopUp && paymentType === 'balance' && tx.invoice?.booking_id && tx.user_id && tx.invoice?.amount) {
-    const { awardPoints } = await import('./pointsService');
-    await awardPoints(tx.user_id, tx.invoice.amount, 'Booking payment', tx.invoice.booking_id);
-  }
-
-  // 4. Credit wallet only for wallet top-ups
+  // 3. Credit wallet only for wallet top-ups
   if (isWalletTopUp) {
     const amount = tx.invoice?.amount;
     if (amount && tx.user_id) {
@@ -415,7 +515,7 @@ export const saveWorkerDocumentRecord = async (record: {
   back_url?: string;
 }): Promise<void> => {
   const { error } = await supabase
-    .from('admin_worker_documents')
+    .from('worker_documents')
     .upsert(
       {
         worker_id: record.worker_id,
@@ -437,7 +537,7 @@ export const saveWorkerDocumentRecord = async (record: {
 
 export const getWorkerDocuments = async (workerId: string) => {
   const { data, error } = await supabase
-    .from('admin_worker_documents')
+    .from('worker_documents')
     .select('document_type, front_url, back_url')
     .eq('worker_id', workerId);
   if (error) throw error;

@@ -53,8 +53,8 @@ export const ServiceTabs = ({ selectedService, onSelect }: ServiceTabsProps) => 
         className={cn(
           "flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200",
           selectedService === 'emergency'
-            ? "bg-red-600 text-white shadow-md"
-            : "bg-red-50 border border-red-200 text-red-600 hover:bg-red-100"
+            ? "bg-emergency text-white shadow-md"
+            : "bg-emergency-light border border-emergency-muted text-emergency hover:bg-emergency-muted"
         )}
       >
         <Zap className="h-5 w-5" />

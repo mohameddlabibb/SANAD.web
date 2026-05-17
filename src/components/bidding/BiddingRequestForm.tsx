@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MapPin, ChevronDown, CheckCircle, Plus, LocateFixed } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { LocationPickerModal } from '@/components/LocationPickerModal';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +24,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { parseError } from '@/lib/parseError';
 import type { NewBiddingRequestPayload } from '@/types/biddings';
 
-const SERVICE_TYPES = ['chefs', 'drivers', 'caregivers', 'maid', 'babysitters'];
+const SERVICE_TYPES = ['chef', 'driver', 'caregiver', 'maid', 'babysitter'];
 
 interface Props {
   onSuccess: () => void;
@@ -50,6 +51,7 @@ export function BiddingRequestForm({ onSuccess, onCancel }: Props) {
   const [newAddress, setNewAddress] = useState('');
   const [extraAddresses, setExtraAddresses] = useState<string[]>([]);
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
+  const [femaleAcknowledged, setFemaleAcknowledged] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const allAddresses = [...savedAddresses, ...extraAddresses];
@@ -72,6 +74,10 @@ export function BiddingRequestForm({ onSuccess, onCancel }: Props) {
       toast({ title: t('common.error'), description: 'Please fill in all fields.', variant: 'destructive' });
       return;
     }
+    if (!femaleAcknowledged) {
+      toast({ title: t('common.error'), description: 'Please acknowledge the female worker condition.', variant: 'destructive' });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -91,7 +97,8 @@ export function BiddingRequestForm({ onSuccess, onCancel }: Props) {
       const { data: workers } = await supabase
         .from('workers')
         .select('id')
-        .eq('service_type', serviceType);
+        .eq('service_type', serviceType)
+        .eq('is_hidden', false);
 
       await Promise.allSettled(
         (workers ?? []).map((w) =>
@@ -250,6 +257,22 @@ export function BiddingRequestForm({ onSuccess, onCancel }: Props) {
             updateUser({ address: merged });
           }}
         />
+      </div>
+
+      <div
+        className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${femaleAcknowledged ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+        onClick={() => setFemaleAcknowledged((v) => !v)}
+      >
+        <Checkbox
+          id="female-ack"
+          checked={femaleAcknowledged}
+          onCheckedChange={(checked) => setFemaleAcknowledged(!!checked)}
+          onClick={(e) => e.stopPropagation()}
+          className="mt-0.5 shrink-0"
+        />
+        <label htmlFor="female-ack" className="text-sm leading-snug cursor-pointer select-none">
+          {t('bidding.femaleWorkerAck', 'I understand that if the assigned worker is female, a female must be present at the location throughout the service.')}
+        </label>
       </div>
 
       <div className="flex gap-2 pt-2">

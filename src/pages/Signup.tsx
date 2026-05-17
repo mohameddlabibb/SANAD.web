@@ -18,14 +18,20 @@ const Signup = () => {
   const [phone, setPhone] = useState('');
   const [nationalId, setNationalId] = useState('');
   const [password, setPassword] = useState('');
+  const [gender, setGender] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (!gender) {
+      setError(t('auth.genderRequired', 'Please select your gender.'));
+      return;
+    }
+
     try {
-      await signup(name, email, phone, password, nationalId);
+      await signup(name, email, phone, password, nationalId, gender);
       navigate('/');
     } catch (err) {
       setError(parseError(err));
@@ -69,6 +75,21 @@ const Signup = () => {
               value={nationalId}
               onChange={(e) => setNationalId(e.target.value)}
             />
+            <div className="flex gap-6">
+              {['male', 'female'].map((g) => (
+                <label key={g} className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={g}
+                    checked={gender === g}
+                    onChange={() => setGender(g)}
+                    className="accent-primary w-4 h-4"
+                  />
+                  <span className="text-sm capitalize">{t(`auth.gender_${g}`, g === 'male' ? 'Male' : 'Female')}</span>
+                </label>
+              ))}
+            </div>
             <Input
               type="password"
               placeholder={t('auth.passwordPlaceholder')}

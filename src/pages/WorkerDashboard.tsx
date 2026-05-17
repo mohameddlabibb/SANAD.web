@@ -35,6 +35,8 @@ interface BookingRow {
 
 const STATUS_BADGE: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
+  deposit_pending: 'bg-orange-100 text-orange-800',
+  deposit_paid: 'bg-blue-100 text-blue-800',
   accepted: 'bg-blue-100 text-blue-800',
   ongoing: 'bg-green-100 text-green-800',
   completed: 'bg-gray-100 text-gray-800',
@@ -43,12 +45,14 @@ const STATUS_BADGE: Record<string, string> = {
 
 const NEXT_STATUS: Record<string, string> = {
   pending: 'accepted',
+  deposit_paid: 'ongoing',
   accepted: 'ongoing',
   ongoing: 'completed',
 };
 
 const NEXT_LABEL: Record<string, string> = {
   pending: 'Accept',
+  deposit_paid: 'Start Service',
   accepted: 'Start Service',
   ongoing: 'Mark Completed',
 };
@@ -134,6 +138,10 @@ const WorkerDashboard = () => {
         prev.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
       );
       if (newStatus === 'completed' && booking?.user_id) {
+        if (booking.total_price) {
+          const { awardPoints } = await import('@/services/pointsService');
+          await awardPoints(booking.user_id, booking.total_price, 'Service completed', bookingId);
+        }
         await createNotification({
           receiver_id: booking.user_id,
           title: 'Service Completed',
@@ -183,7 +191,7 @@ const WorkerDashboard = () => {
     }
   };
 
-  const active = bookings.filter((b) => ['pending', 'accepted', 'ongoing'].includes(b.status));
+  const active = bookings.filter((b) => ['pending', 'deposit_pending', 'deposit_paid', 'accepted', 'ongoing'].includes(b.status));
   const done = bookings.filter((b) => ['completed', 'cancelled'].includes(b.status));
 
   const BookingCard = ({ booking }: { booking: BookingRow }) => {

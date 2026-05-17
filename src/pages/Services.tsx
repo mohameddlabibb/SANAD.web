@@ -165,8 +165,8 @@ const Services = () => {
 
           {/* Emergency mode header */}
           {selectedService === 'emergency' && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-              <span className="text-red-600 font-semibold text-sm">
+            <div className="mt-6 p-4 bg-emergency-light border border-emergency-muted rounded-xl flex items-start gap-3">
+              <span className="text-emergency font-semibold text-sm">
                 {t('servicesPage.emergencyModeDesc', 'Showing providers available right now today. Emergency Fee +200 EGP will apply.')}
               </span>
             </div>

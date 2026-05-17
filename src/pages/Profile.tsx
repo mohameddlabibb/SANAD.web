@@ -140,6 +140,8 @@ const Profile = () => {
     setClaimingCoupon(true);
     try {
       await redeemCoupon(user.id, pointsBalance, discount, threshold);
+      setPointsBalance(0);
+      setAvailableCoupons([]);
       toast({ title: t('coupon.claimCoupon', 'Claim {{discount}}% Coupon', { discount }), description: t('coupon.pointsResetNote', 'All points reset to 0 when you claim a coupon.') });
       refreshPointsTab();
     } catch (err) {
@@ -574,6 +576,9 @@ const Profile = () => {
                         {COUPON_TIERS.map((tier) => {
                           const pct = Math.min((pointsBalance / tier.threshold) * 100, 100);
                           const unlocked = pointsBalance >= tier.threshold;
+                          const alreadyClaimed = availableCoupons.some(
+                            (c) => c.discount_percent === tier.discount && !c.is_used,
+                          );
                           return (
                             <div key={tier.threshold} className="space-y-1">
                               <div className="flex items-center justify-between text-sm">
@@ -590,7 +595,7 @@ const Profile = () => {
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              {unlocked && (
+                              {unlocked && !alreadyClaimed && (
                                 <Button
                                   size="sm"
                                   className="mt-1 bg-teal-600 hover:bg-teal-700 text-white"
@@ -599,6 +604,11 @@ const Profile = () => {
                                 >
                                   {t('coupon.claimCoupon', 'Claim {{discount}}% Coupon', { discount: tier.discount })}
                                 </Button>
+                              )}
+                              {alreadyClaimed && (
+                                <p className="text-xs text-green-600 font-medium mt-1">
+                                  {t('coupon.alreadyInWallet', 'Coupon already in your wallet')}
+                                </p>
                               )}
                             </div>
                           );

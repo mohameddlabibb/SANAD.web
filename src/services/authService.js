@@ -78,6 +78,7 @@ export async function createProfile({
   phone,
   nationalId = '',
   walletBalance = 0,
+  gender = null,
 }) {
   const { data, error } = await supabase
     .from(PROFILES_TABLE)
@@ -88,6 +89,7 @@ export async function createProfile({
       phone_number: phone,
       national_id: nationalId,
       wallet_balance: walletBalance,
+      gender,
     }, { onConflict: 'id' })
     .select()
     .single();

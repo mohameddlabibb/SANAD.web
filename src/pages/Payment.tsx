@@ -14,13 +14,14 @@ import { createTransaction } from '@/services/transactionService';
 import { createNotification } from '@/services/notificationService';
 import { parseError } from '@/lib/parseError';
 import { supabase } from '@/lib/supabaseClient';
-import { getAvailableCoupons, applyCoupon, awardPoints, type UserCoupon } from '@/services/pointsService';
+import { getAvailableCoupons, applyCoupon, type UserCoupon } from '@/services/pointsService';
 
 const MANAGEMENT_FEE = 50;
 const EMERGENCY_FEE = 200;
 
 interface Booking {
   id: string;
+  worker_id: string | null;
   booking_date: string;
   start_time: string;
   duration_hours: number;
@@ -180,10 +181,7 @@ const Payment = () => {
       }
       await updateBookingStatus(booking.id, newBookingStatus);
 
-      // Award points and apply coupon immediately for card balance payments
-      if (paymentMethod !== 'instapay' && paymentType === 'balance') {
-        await awardPoints(user.id, booking.total_price, 'Booking payment', booking.id);
-      }
+      // Apply coupon on deposit payment
       if (paymentMethod !== 'instapay' && paymentType === 'deposit' && selectedCoupon) {
         await applyCoupon(selectedCoupon.id, booking.id);
       }
@@ -199,6 +197,15 @@ const Payment = () => {
         title: t('payment.notificationTitle'),
         message: notificationMessage,
       });
+
+      if (paymentType === 'deposit' && booking.worker_id) {
+        await createNotification({
+          receiver_id: booking.worker_id,
+          title: 'Deposit Paid',
+          message: `A deposit has been paid for your booking on ${booking.booking_date}. Please check your bookings.`,
+          booking_id: booking.id,
+        });
+      }
 
       setConfirmed(true);
       if (paymentMethod !== 'instapay') {
@@ -388,8 +395,8 @@ const Payment = () => {
                 </div>
                 {emergFee > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-red-600 font-medium">{t('payment.emergencyFee', 'Emergency Fee')}</span>
-                    <span className="font-medium text-red-600">+ {emergFee} EGP</span>
+                    <span className="text-emergency font-medium">{t('payment.emergencyFee', 'Emergency Fee')}</span>
+                    <span className="font-medium text-emergency">+ {emergFee} EGP</span>
                   </div>
                 )}
                 {mgmtFee > 0 && (

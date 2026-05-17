@@ -158,7 +158,7 @@ const BookingDetail = () => {
                       {booking.workers?.service_type ?? booking.booking_type ?? '—'}
                     </CardTitle>
                     {booking.booking_type === 'emergency' && (
-                      <Badge className="bg-red-600 text-white text-xs">
+                      <Badge className="bg-emergency text-white text-xs">
                         {t('myRequests.emergency', 'Emergency')}
                       </Badge>
                     )}
@@ -249,7 +249,7 @@ const BookingDetail = () => {
                               <span>{basePrice} EGP</span>
                             </div>
                             {emergFee > 0 && (
-                              <div className="flex justify-between text-red-600 font-medium">
+                              <div className="flex justify-between text-emergency font-medium">
                                 <span>{t('payment.emergencyFee', 'Emergency Fee')}</span>
                                 <span>+ {emergFee} EGP</span>
                               </div>

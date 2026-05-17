@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const {
       email, password, fullName, phone, city, nationalId,
-      nationality, serviceType, dob,
+      nationality, gender, serviceType, dob,
       yearsExperience, hourlyRate, monthlyRate,
       carModel, chefType, specialTags,
       medicalSkills, overnightAvailable,
@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
         role: 'worker',
         phone_number: phone || null,
         city: city || null,
+        gender: gender || null,
       }, { onConflict: 'id' });
 
     if (upsertProfileErr) {

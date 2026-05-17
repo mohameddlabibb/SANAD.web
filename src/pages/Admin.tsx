@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Users, Briefcase, Calendar, CreditCard, Heart, RefreshCw } from 'lucide-react';
+import { Users, Briefcase, Calendar, CreditCard, Heart, RefreshCw, ClipboardCheck, CheckCircle, XCircle, FileText } from 'lucide-react';
 import {
   CAREGIVER_MEDICAL_SKILLS, CAREGIVER_MEDICAL_SKILL_LABELS,
   MAID_SERVICES, MAID_SERVICE_LABELS,
@@ -40,11 +40,16 @@ import {
   createWorker,
   updateWorker,
   deleteWorker,
+  toggleWorkerVisibility,
   uploadWorkerDocument,
   saveWorkerDocumentRecord,
   getWorkerDocuments,
   getRefundQueue,
   markRefundProcessed,
+  getPendingApprovalWorkers,
+  approveWorker,
+  rejectWorker,
+  getWorkerDocumentSignedUrls,
   type AdminWorkerRow,
   type AdminBookingRow,
   type AdminTransactionRow,
@@ -76,7 +81,7 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | '
 
 const EMPTY_WORKER_FORM = {
   email: '', password: '', fullName: '', phone: '', city: '',
-  nationalId: '', nationality: '', serviceType: '', dob: '', yearsExperience: '', hourlyRate: '', monthlyRate: '',
+  nationalId: '', nationality: '', gender: '', serviceType: '', dob: '', yearsExperience: '', hourlyRate: '', monthlyRate: '',
   // driver
   hasCar: '', carModel: '', carMake: '', carModelName: '', carYear: '',
   // chef
@@ -167,6 +172,7 @@ const Admin = () => {
   // ── data state ───────────────────────────────────────────────────────────────
   const [users, setUsers] = useState<ProfileRow[]>([]);
   const [workers, setWorkers] = useState<AdminWorkerRow[]>([]);
+  const [showHidden, setShowHidden] = useState(false);
   const [bookings, setBookings] = useState<AdminBookingRow[]>([]);
   const [pendingTxs, setPendingTxs] = useState<AdminTransactionRow[]>([]);
   const [refundQueue, setRefundQueue] = useState<RefundQueueRow[]>([]);
@@ -241,6 +247,15 @@ const Admin = () => {
     filterBabysitterSkill: '', filterBabysitterOvernight: '',
   };
   const activeFilterCount = Object.values(workerFilters).filter(Boolean).length;
+
+  // ── worker approvals ──────────────────────────────────────────────────────────
+  const [pendingWorkers, setPendingWorkers] = useState<AdminWorkerRow[]>([]);
+  const [viewDocsWorker, setViewDocsWorker] = useState<AdminWorkerRow | null>(null);
+  const [viewDocsUrls, setViewDocsUrls] = useState<{ document_type: string; front_url: string | null; back_url: string | null }[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [rejectApprovalWorker, setRejectApprovalWorker] = useState<AdminWorkerRow | null>(null);
+  const [rejectApprovalReason, setRejectApprovalReason] = useState('');
+  const [processingApproval, setProcessingApproval] = useState(false);
 
   // ── donation institutes ───────────────────────────────────────────────────────
   const [institutes, setInstitutes] = useState<DonationInstitute[]>([]);
@@ -323,13 +338,14 @@ const Admin = () => {
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [u, w, b, p, rq, inst] = await Promise.all([
+      const [u, w, b, p, rq, inst, pw] = await Promise.all([
         getAllUsers(),
         getAllWorkers(),
         getAllBookings(),
         getPendingTransactions(),
         getRefundQueue(),
         getInstitutes(),
+        getPendingApprovalWorkers(),
       ]);
       setUsers(u);
       setWorkers(w);
@@ -337,6 +353,7 @@ const Admin = () => {
       setPendingTxs(p);
       setRefundQueue(rq);
       setInstitutes(inst);
+      setPendingWorkers(pw);
     } catch (err) {
       console.error(err);
       toast({ title: 'Error loading data', variant: 'destructive' });
@@ -412,6 +429,7 @@ const Admin = () => {
         city: workerForm.city,
         nationalId: workerForm.nationalId,
         nationality: workerForm.nationality,
+        gender: workerForm.gender,
         serviceType: workerForm.serviceType,
         dob: workerForm.dob,
         yearsExperience: workerForm.yearsExperience !== '' ? Number(workerForm.yearsExperience) : null,
@@ -530,6 +548,7 @@ const Admin = () => {
       city: w.profiles?.city ?? '',
       nationalId: w.profiles?.national_id ?? '',
       nationality: w.nationality ?? '',
+      gender: w.profiles?.gender ?? '',
       serviceType: w.service_type,
       yearsExperience: w.years_experience != null ? String(w.years_experience) : '',
       hourlyRate: w.hourly_rate != null ? String(w.hourly_rate) : '',
@@ -563,6 +582,7 @@ const Admin = () => {
         city: editForm.city,
         nationalId: editForm.nationalId,
         nationality: editForm.nationality,
+        gender: editForm.gender,
         serviceType: editForm.serviceType,
         yearsExperience: editForm.yearsExperience !== '' ? Number(editForm.yearsExperience) : null,
         hourlyRate: editForm.hourlyRate !== '' ? Number(editForm.hourlyRate) : null,
@@ -616,6 +636,18 @@ const Admin = () => {
   };
 
   // ── delete worker ─────────────────────────────────────────────────────────────
+  const handleToggleVisibility = async (w: AdminWorkerRow) => {
+    const next = !w.is_hidden;
+    setWorkers((prev) => prev.map((x) => (x.id === w.id ? { ...x, is_hidden: next } : x)));
+    try {
+      await toggleWorkerVisibility(w.id, next);
+      toast({ title: next ? 'Worker hidden' : 'Worker is now visible' });
+    } catch (err) {
+      setWorkers((prev) => prev.map((x) => (x.id === w.id ? { ...x, is_hidden: !next } : x)));
+      toast({ title: parseError(err), variant: 'destructive' });
+    }
+  };
+
   const handleDeleteWorker = async () => {
     if (!deleteConfirmWorker) return;
     setDeletingWorker(true);
@@ -665,6 +697,7 @@ const Admin = () => {
   const workerCities = [...new Set(workers.map((w) => w.profiles?.city).filter(Boolean) as string[])].sort();
 
   const filteredWorkers = workers.filter((w) => {
+    if (!showHidden && w.is_hidden) return false;
     if (workerFilters.name && !w.profiles?.full_name?.toLowerCase().includes(workerFilters.name.toLowerCase())) return false;
     if (workerFilters.serviceType && w.service_type !== workerFilters.serviceType) return false;
     if (workerFilters.city && w.profiles?.city !== workerFilters.city) return false;
@@ -718,13 +751,14 @@ const Admin = () => {
             {/* ── Left Sidebar ── */}
             <aside className="w-52 shrink-0 space-y-1">
               {[
-                { id: 'users',     label: 'Users',     icon: Users,      count: users.length },
-                { id: 'workers',   label: 'Workers',   icon: Briefcase,  count: workers.length },
-                { id: 'bookings',  label: 'Bookings',  icon: Calendar,   count: bookings.length },
-                { id: 'payments',  label: 'Payments',  icon: CreditCard, count: pendingTxs.length },
-                { id: 'refunds',   label: 'Refunds',   icon: RefreshCw,  count: refundQueue.length },
-                { id: 'donations', label: 'Donations', icon: Heart,      count: institutes.length },
-              ].map(({ id, label, icon: Icon, count }) => (
+                { id: 'users',     label: 'Users',     icon: Users,           count: users.length,          alert: false },
+                { id: 'workers',   label: 'Workers',   icon: Briefcase,       count: workers.length,        alert: false },
+                { id: 'approvals', label: 'Approvals', icon: ClipboardCheck,  count: pendingWorkers.length, alert: pendingWorkers.length > 0 },
+                { id: 'bookings',  label: 'Bookings',  icon: Calendar,        count: bookings.length,       alert: false },
+                { id: 'payments',  label: 'Payments',  icon: CreditCard,      count: pendingTxs.length,     alert: false },
+                { id: 'refunds',   label: 'Refunds',   icon: RefreshCw,       count: refundQueue.length,    alert: false },
+                { id: 'donations', label: 'Donations', icon: Heart,           count: institutes.length,     alert: false },
+              ].map(({ id, label, icon: Icon, count, alert }) => (
                 <button
                   key={id}
                   onClick={() => setActiveSection(id)}
@@ -736,7 +770,13 @@ const Admin = () => {
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="flex-1 text-left">{label}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeSection === id ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    activeSection === id
+                      ? 'bg-primary-foreground/20 text-primary-foreground'
+                      : alert
+                        ? 'bg-red-100 text-red-600 font-semibold'
+                        : 'bg-muted text-muted-foreground'
+                  }`}>
                     {count}
                   </span>
                 </button>
@@ -784,6 +824,105 @@ const Admin = () => {
               </Card>
             )}
 
+            {/* ── Worker Approvals ── */}
+            {activeSection === 'approvals' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pending Worker Approvals</CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Review workers who have submitted their documents and are awaiting account approval.
+                  </p>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  {pendingWorkers.length === 0 ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <ClipboardCheck className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p>No pending approvals</p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Service</TableHead>
+                          <TableHead>City</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>National ID</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pendingWorkers.map((w) => (
+                          <TableRow key={w.id}>
+                            <TableCell className="font-medium">{w.profiles?.full_name || '—'}</TableCell>
+                            <TableCell className="capitalize">{w.service_type}</TableCell>
+                            <TableCell>{w.profiles?.city || '—'}</TableCell>
+                            <TableCell>{w.profiles?.phone_number || '—'}</TableCell>
+                            <TableCell>{w.profiles?.national_id || '—'}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={async () => {
+                                    setViewDocsWorker(w);
+                                    setLoadingDocs(true);
+                                    try {
+                                      const urls = await getWorkerDocumentSignedUrls(w.id);
+                                      setViewDocsUrls(urls);
+                                    } catch {
+                                      toast({ title: 'Could not load documents', variant: 'destructive' });
+                                    } finally {
+                                      setLoadingDocs(false);
+                                    }
+                                  }}
+                                >
+                                  <FileText className="h-3.5 w-3.5 mr-1" />
+                                  View Docs
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={processingApproval}
+                                  onClick={async () => {
+                                    setProcessingApproval(true);
+                                    try {
+                                      await approveWorker(w.id);
+                                      setPendingWorkers((prev) => prev.filter((pw) => pw.id !== w.id));
+                                      setWorkers((prev) => prev.map((wk) => wk.id === w.id ? { ...wk, account_status: 'approved', is_hidden: false } : wk));
+                                      toast({ title: `${w.profiles?.full_name ?? 'Worker'} approved` });
+                                    } catch (err) {
+                                      toast({ title: parseError(err), variant: 'destructive' });
+                                    } finally {
+                                      setProcessingApproval(false);
+                                    }
+                                  }}
+                                >
+                                  <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setRejectApprovalWorker(w);
+                                    setRejectApprovalReason('');
+                                  }}
+                                >
+                                  <XCircle className="h-3.5 w-3.5 mr-1" />
+                                  Reject
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* ── Workers ── */}
             {activeSection === 'workers' && (
               <Card>
@@ -811,6 +950,14 @@ const Admin = () => {
                         </span>
                       )}
                     </Button>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="show-hidden"
+                        checked={showHidden}
+                        onCheckedChange={(v) => setShowHidden(!!v)}
+                      />
+                      <Label htmlFor="show-hidden" className="text-sm cursor-pointer whitespace-nowrap">Show hidden</Label>
+                    </div>
                     <Button size="sm" onClick={() => setAddWorkerOpen(true)}>Add Worker</Button>
                   </div>
                 </CardHeader>
@@ -1085,19 +1232,20 @@ const Admin = () => {
                         <TableHead>Monthly (EGP)</TableHead>
                         <TableHead>Jobs</TableHead>
                         <TableHead>Details</TableHead>
+                        <TableHead>Visible</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredWorkers.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={10} className="text-center text-muted-foreground">
+                          <TableCell colSpan={11} className="text-center text-muted-foreground">
                             {workers.length === 0 ? 'No workers found' : 'No workers match the current filters'}
                           </TableCell>
                         </TableRow>
                       )}
                       {filteredWorkers.map((w) => (
-                        <TableRow key={w.id}>
+                        <TableRow key={w.id} className={w.is_hidden ? 'opacity-40' : undefined}>
                           <TableCell className="font-medium">{w.profiles?.full_name || '—'}</TableCell>
                           <TableCell className="capitalize">{w.service_type}</TableCell>
                           <TableCell>{w.profiles?.city || '—'}</TableCell>
@@ -1167,6 +1315,13 @@ const Admin = () => {
                               !['driver', 'chef', 'caregiver', 'maid', 'babysitter'].includes(w.service_type)) && (
                               <span className="text-muted-foreground">—</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={!w.is_hidden}
+                              onCheckedChange={() => handleToggleVisibility(w)}
+                              aria-label={w.is_hidden ? 'Show worker' : 'Hide worker'}
+                            />
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
@@ -1598,11 +1753,21 @@ const Admin = () => {
                 <Input placeholder="e.g. Egyptian" value={workerForm.nationality} onChange={(e) => setWF('nationality', e.target.value)} />
               </div>
               <div className="space-y-1">
-                <label className="text-sm font-medium">Years of Experience</label>
-                <Input type="number" min="0" placeholder="e.g. 3" value={workerForm.yearsExperience} onChange={(e) => setWF('yearsExperience', e.target.value)} />
+                <label className="text-sm font-medium">Gender</label>
+                <Select value={workerForm.gender} onValueChange={(v) => setWF('gender', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Years of Experience</label>
+                <Input type="number" min="0" placeholder="e.g. 3" value={workerForm.yearsExperience} onChange={(e) => setWF('yearsExperience', e.target.value)} />
+              </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium">Hourly Rate (EGP)</label>
                 <Input type="number" min="0" placeholder="e.g. 100" value={workerForm.hourlyRate} onChange={(e) => setWF('hourlyRate', e.target.value)} />
@@ -1944,6 +2109,18 @@ const Admin = () => {
                 <label className="text-sm font-medium">Nationality</label>
                 <Input placeholder="e.g. Egyptian" value={editForm.nationality} onChange={(e) => setEF('nationality', e.target.value)} />
               </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Gender</label>
+                <Select value={editForm.gender} onValueChange={(v) => setEF('gender', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Years of Experience</label>
                 <Input type="number" min="0" placeholder="e.g. 3" value={editForm.yearsExperience} onChange={(e) => setEF('yearsExperience', e.target.value)} />
@@ -2433,6 +2610,168 @@ const Admin = () => {
             <Button variant="outline" onClick={() => setDeleteConfirmInstitute(null)}>Cancel</Button>
             <Button variant="destructive" onClick={handleDeleteInstitute} disabled={deletingInstitute}>
               {deletingInstitute ? 'Deleting...' : 'Delete Institute'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── View Worker Documents Dialog ── */}
+      <Dialog open={!!viewDocsWorker} onOpenChange={(open) => { if (!open) { setViewDocsWorker(null); setViewDocsUrls([]); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Documents — {viewDocsWorker?.profiles?.full_name ?? 'Worker'}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingDocs ? (
+            <div className="flex justify-center py-10">
+              <div className="w-7 h-7 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : viewDocsUrls.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">No documents uploaded yet.</p>
+          ) : (
+            <div className="space-y-6 mt-2">
+              {viewDocsUrls.map((doc) => (
+                <div key={doc.document_type} className="space-y-2">
+                  <h4 className="text-sm font-semibold capitalize">
+                    {doc.document_type.replace(/_/g, ' ')}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    {doc.front_url && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Front</p>
+                        <a href={doc.front_url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={doc.front_url}
+                            alt={`${doc.document_type} front`}
+                            className="w-full h-40 object-cover rounded border hover:opacity-90 transition-opacity"
+                          />
+                        </a>
+                      </div>
+                    )}
+                    {doc.back_url && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Back</p>
+                        <a href={doc.back_url} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={doc.back_url}
+                            alt={`${doc.document_type} back`}
+                            className="w-full h-40 object-cover rounded border hover:opacity-90 transition-opacity"
+                          />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setViewDocsWorker(null); setViewDocsUrls([]); }}>Close</Button>
+            {viewDocsWorker && (
+              <>
+                <Button
+                  variant="default"
+                  disabled={processingApproval || loadingDocs}
+                  onClick={async () => {
+                    if (!viewDocsWorker) return;
+                    setProcessingApproval(true);
+                    try {
+                      await approveWorker(viewDocsWorker.id);
+                      setPendingWorkers((prev) => prev.filter((pw) => pw.id !== viewDocsWorker.id));
+                      setWorkers((prev) => prev.map((wk) => wk.id === viewDocsWorker.id ? { ...wk, account_status: 'approved', is_hidden: false } : wk));
+                      setViewDocsWorker(null);
+                      setViewDocsUrls([]);
+                      toast({ title: `${viewDocsWorker.profiles?.full_name ?? 'Worker'} approved` });
+                    } catch (err) {
+                      toast({ title: parseError(err), variant: 'destructive' });
+                    } finally {
+                      setProcessingApproval(false);
+                    }
+                  }}
+                >
+                  <CheckCircle className="h-4 w-4 mr-1.5" />
+                  Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setRejectApprovalWorker(viewDocsWorker);
+                    setRejectApprovalReason('');
+                    setViewDocsWorker(null);
+                    setViewDocsUrls([]);
+                  }}
+                >
+                  <XCircle className="h-4 w-4 mr-1.5" />
+                  Reject
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reject Worker Account Dialog ── */}
+      <Dialog open={!!rejectApprovalWorker} onOpenChange={(open) => { if (!open) { setRejectApprovalWorker(null); setRejectApprovalReason(''); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reject Application — {rejectApprovalWorker?.profiles?.full_name ?? 'Worker'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Reason for rejection</label>
+              <Textarea
+                placeholder="Describe what needs to be corrected or resubmitted (e.g. National ID image is blurry, driving license is expired, etc.)"
+                rows={4}
+                value={rejectApprovalReason}
+                onChange={(e) => setRejectApprovalReason(e.target.value)}
+              />
+            </div>
+            {rejectApprovalReason.trim() && (
+              <div className="rounded-md border bg-muted/40 p-3 space-y-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email preview</p>
+                <p className="text-sm text-foreground">
+                  Dear <span className="font-medium">{rejectApprovalWorker?.profiles?.full_name ?? 'Worker'}</span>,
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your SANAD account application was not approved at this time.
+                </p>
+                <p className="text-sm font-medium">Reason: <span className="font-normal text-muted-foreground">{rejectApprovalReason}</span></p>
+                <p className="text-sm text-muted-foreground">
+                  Please update your profile and documents and resubmit for review.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => { setRejectApprovalWorker(null); setRejectApprovalReason(''); }}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={!rejectApprovalReason.trim() || processingApproval}
+              onClick={async () => {
+                if (!rejectApprovalWorker) return;
+                setProcessingApproval(true);
+                try {
+                  await rejectWorker(
+                    rejectApprovalWorker.id,
+                    rejectApprovalReason.trim(),
+                    rejectApprovalWorker.profiles?.email ?? '',
+                    rejectApprovalWorker.profiles?.full_name ?? 'Worker',
+                  );
+                  setPendingWorkers((prev) => prev.filter((pw) => pw.id !== rejectApprovalWorker.id));
+                  setRejectApprovalWorker(null);
+                  setRejectApprovalReason('');
+                  toast({ title: 'Rejection sent', description: 'Worker has been notified.' });
+                } catch (err) {
+                  toast({ title: parseError(err), variant: 'destructive' });
+                } finally {
+                  setProcessingApproval(false);
+                }
+              }}
+            >
+              {processingApproval ? 'Sending...' : 'Send Rejection'}
             </Button>
           </DialogFooter>
         </DialogContent>

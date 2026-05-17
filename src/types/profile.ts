@@ -11,5 +11,6 @@ export interface ProfileRow {
   created_at: string | null;
   national_id: string | null;
   email: string | null;
+  gender: string | null;
 }
 
