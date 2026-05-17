@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
       medicalSkills, overnightAvailable,
       maidServicesInput, maidBringsSupplies,
       babysitterSkillsInput, babysitterOvernightAvailable, babysitterMaxChildren,
+      languages,
     } = body;
 
     if (!email || !password || !fullName || !serviceType || !nationalId || !dob) {
@@ -178,6 +179,7 @@ Deno.serve(async (req) => {
         nationality: nationality || null,
         hourly_rate: hourlyRate ?? null,
         monthly_rate: monthlyRate ?? null,
+        languages: Array.isArray(languages) && languages.length ? languages : null,
         ...workerExtras,
       });
 

@@ -96,6 +96,8 @@ const EMPTY_WORKER_FORM = {
   babysitterSkillsInput: [] as string[],
   babysitterOvernightAvailable: false,
   babysitterMaxChildren: '',
+  // common
+  languagesInput: [] as string[],
 };
 
 const CAR_DATA: Record<string, string[]> = {
@@ -122,6 +124,11 @@ const CAR_DATA: Record<string, string[]> = {
 };
 
 const CAR_YEARS = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
+
+const WORKER_LANGUAGES = [
+  'Arabic', 'English', 'French', 'German', 'Spanish', 'Italian',
+  'Turkish', 'Russian', 'Chinese', 'Urdu', 'Hindi', 'Tagalog',
+];
 
 const parseCarModelString = (str: string) => {
   if (!str) return { carMake: '', carModelName: '', carYear: '' };
@@ -445,6 +452,7 @@ const Admin = () => {
         babysitterSkillsInput: workerForm.babysitterSkillsInput,
         babysitterOvernightAvailable: workerForm.babysitterOvernightAvailable,
         babysitterMaxChildren: workerForm.babysitterMaxChildren,
+        languages: workerForm.languagesInput,
       });
 
       // Optimistically add the new worker to state — avoids a full loadAll() which blanks the page
@@ -458,6 +466,7 @@ const Admin = () => {
         monthly_rate: workerForm.monthlyRate !== '' ? Number(workerForm.monthlyRate) : null,
         total_jobs: 0,
         nationality: workerForm.nationality || null,
+        languages: workerForm.languagesInput.length ? workerForm.languagesInput : null,
         car_model: workerForm.serviceType === 'driver' ? carModelStr : null,
         special_tags: workerForm.serviceType === 'chef'
           ? (workerForm.specialTagsInput.length ? workerForm.specialTagsInput : null)
@@ -567,6 +576,7 @@ const Admin = () => {
       babysitterSkillsInput: babysitterSkills,
       babysitterOvernightAvailable: w.special_attributes?.overnight_available ?? false,
       babysitterMaxChildren: w.special_attributes?.max_children != null ? String(w.special_attributes.max_children) : '',
+      languagesInput: w.languages ?? [],
     });
   };
 
@@ -599,6 +609,7 @@ const Admin = () => {
         babysitterSkillsInput: editForm.babysitterSkillsInput,
         babysitterOvernightAvailable: editForm.babysitterOvernightAvailable,
         babysitterMaxChildren: editForm.babysitterMaxChildren,
+        languages: editForm.languagesInput,
       });
       await loadAll();
 
@@ -1765,6 +1776,29 @@ const Admin = () => {
                 </Select>
               </div>
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Languages Spoken</label>
+              <div className="flex flex-wrap gap-2">
+                {WORKER_LANGUAGES.map((lang) => {
+                  const selected = workerForm.languagesInput.includes(lang);
+                  return (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => setWorkerForm(prev => ({
+                        ...prev,
+                        languagesInput: selected
+                          ? prev.languagesInput.filter(l => l !== lang)
+                          : [...prev.languagesInput, lang],
+                      }))}
+                      className={`px-3 py-1 rounded-full text-sm border transition-colors ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary'}`}
+                    >
+                      {lang}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-sm font-medium">Years of Experience</label>
@@ -2120,6 +2154,29 @@ const Admin = () => {
                     <SelectItem value="Female">Female</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Languages Spoken</label>
+              <div className="flex flex-wrap gap-2">
+                {WORKER_LANGUAGES.map((lang) => {
+                  const selected = editForm.languagesInput.includes(lang);
+                  return (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => setEditForm(prev => ({
+                        ...prev,
+                        languagesInput: selected
+                          ? prev.languagesInput.filter(l => l !== lang)
+                          : [...prev.languagesInput, lang],
+                      }))}
+                      className={`px-3 py-1 rounded-full text-sm border transition-colors ${selected ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary'}`}
+                    >
+                      {lang}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

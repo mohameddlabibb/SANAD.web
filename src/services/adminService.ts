@@ -29,6 +29,7 @@ export interface AdminWorkerRow {
   monthly_rate: number | null;
   total_jobs: number | null;
   nationality: string | null;
+  languages: string[] | null;
   car_model: string | null;
   special_tags: string[] | null;
   special_attributes: Record<string, string> | null;
@@ -51,7 +52,7 @@ export async function getAllWorkers(): Promise<AdminWorkerRow[]> {
   const [workersRes, jobsRes] = await Promise.all([
     supabase
       .from('workers')
-      .select('id, service_type, average_rating, years_experience, hourly_rate, monthly_rate, total_jobs, nationality, car_model, special_tags, special_attributes, is_hidden, account_status, rejection_reason, documents_submitted, profiles(full_name, avatar_url, city, phone_number, national_id, gender, email)'),
+      .select('id, service_type, average_rating, years_experience, hourly_rate, monthly_rate, total_jobs, nationality, languages, car_model, special_tags, special_attributes, is_hidden, account_status, rejection_reason, documents_submitted, profiles(full_name, avatar_url, city, phone_number, national_id, gender, email)'),
     supabase
       .from('bookings')
       .select('worker_id')
@@ -103,6 +104,8 @@ export interface WorkerFormInput {
   babysitterSkillsInput: string[];
   babysitterOvernightAvailable: boolean;
   babysitterMaxChildren: string;
+  // common
+  languages: string[];
 }
 
 export async function createWorker(input: WorkerFormInput): Promise<string> {
@@ -142,6 +145,7 @@ export async function createWorker(input: WorkerFormInput): Promise<string> {
         babysitterSkillsInput: input.babysitterSkillsInput,
         babysitterOvernightAvailable: input.babysitterOvernightAvailable,
         babysitterMaxChildren: input.babysitterMaxChildren !== '' ? Number(input.babysitterMaxChildren) : null,
+        languages: input.languages?.length ? input.languages : null,
       }),
     },
   );
@@ -213,6 +217,7 @@ export async function updateWorker(
       hourly_rate: input.hourlyRate,
       monthly_rate: input.monthlyRate,
       gender: validGender,
+      languages: input.languages?.length ? input.languages : null,
       ...workerExtras,
     })
     .eq('id', workerId);
