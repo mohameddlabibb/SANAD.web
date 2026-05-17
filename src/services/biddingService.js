@@ -51,11 +51,11 @@ export async function getBiddingRequestById(requestId) {
   const workerIds = bids.map((b) => b.worker_id);
   const { data: workers } = await supabase
     .from('workers')
-    .select('id, rating')
+    .select('id, average_rating')
     .in('id', workerIds);
 
   const ratingMap = {};
-  (workers ?? []).forEach((w) => { ratingMap[w.id] = w.rating; });
+  (workers ?? []).forEach((w) => { ratingMap[w.id] = w.average_rating; });
 
   return {
     ...request,

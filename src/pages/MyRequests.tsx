@@ -54,7 +54,7 @@ const MyRequests = () => {
         if (error) { console.error('bookings:', error); setBookingsLoading(false); return; }
         const today = new Date(new Date().toDateString());
         const toCancel = (data ?? []).filter(
-          b => ['pending', 'confirmed', 'accepted'].includes(b.status ?? '') &&
+          b => ['pending', 'pending_deposit', 'confirmed', 'accepted'].includes(b.status ?? '') &&
                b.booking_date && new Date(b.booking_date) < today
         );
         if (toCancel.length > 0) {
@@ -66,7 +66,7 @@ const MyRequests = () => {
         }
         const rows = data ?? [];
         const past = rows.filter(b => ['completed', 'cancelled', 'paid', 'payment_pending', 'balance_pending'].includes(b.status ?? ''));
-        setUpcomingBookings(rows.filter(b => ['pending', 'accepted', 'confirmed', 'ongoing', 'deposit_pending', 'deposit_paid'].includes(b.status ?? '')));
+        setUpcomingBookings(rows.filter(b => ['pending', 'pending_deposit', 'accepted', 'confirmed', 'ongoing', 'deposit_pending', 'deposit_paid'].includes(b.status ?? '')));
         setPastBookings(past);
 
         // Load feedback status for paid bookings

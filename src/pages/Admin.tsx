@@ -483,6 +483,8 @@ const Admin = () => {
           city: workerForm.city || null,
           phone_number: workerForm.phone || null,
           national_id: workerForm.nationalId,
+          gender: workerForm.gender || null,
+          email: workerForm.email || null,
         },
       };
       setWorkers((prev) => [newWorkerRow, ...prev]);
@@ -1757,8 +1759,8 @@ const Admin = () => {
                 <Select value={workerForm.gender} onValueChange={(v) => setWF('gender', v)}>
                   <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -2114,8 +2116,8 @@ const Admin = () => {
                 <Select value={editForm.gender} onValueChange={(v) => setEF('gender', v)}>
                   <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

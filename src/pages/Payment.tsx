@@ -181,8 +181,8 @@ const Payment = () => {
       }
       await updateBookingStatus(booking.id, newBookingStatus);
 
-      // Apply coupon on deposit payment
-      if (paymentMethod !== 'instapay' && paymentType === 'deposit' && selectedCoupon) {
+      // Apply coupon on deposit payment (mark used immediately so it can't be reused)
+      if (paymentType === 'deposit' && selectedCoupon) {
         await applyCoupon(selectedCoupon.id, booking.id);
       }
 

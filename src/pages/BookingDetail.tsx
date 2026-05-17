@@ -70,7 +70,7 @@ const BookingDetail = () => {
       .then(async ({ data, error }) => {
         if (!error && data) {
           const autoCancel =
-            ['pending', 'confirmed', 'accepted'].includes(data.status ?? '') &&
+            ['pending', 'pending_deposit', 'confirmed', 'accepted'].includes(data.status ?? '') &&
             data.booking_date &&
             new Date(data.booking_date) < new Date(new Date().toDateString());
 
@@ -275,7 +275,7 @@ const BookingDetail = () => {
                 </div>
 
                 {/* Pay deposit when booking is pending/accepted/confirmed and deposit not yet paid */}
-                {['pending', 'accepted', 'confirmed'].includes(booking.status ?? '') && (
+                {['pending', 'pending_deposit', 'accepted', 'confirmed'].includes(booking.status ?? '') && (
                   <Button
                     className="w-full mt-2"
                     onClick={() => navigate(`/payment/${booking.id}?type=deposit`)}
@@ -330,7 +330,7 @@ const BookingDetail = () => {
                 )}
 
                 {/* Cancel booking — user action only */}
-                {['pending', 'accepted', 'confirmed', 'deposit_pending', 'deposit_paid'].includes(booking.status ?? '') && (
+                {['pending', 'pending_deposit', 'accepted', 'confirmed', 'deposit_pending', 'deposit_paid'].includes(booking.status ?? '') && (
                   <Button
                     className="w-full mt-2"
                     variant="outline"

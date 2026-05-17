@@ -1,12 +1,16 @@
 export type BookingStatus =
   | 'pending'
+  | 'pending_deposit'
   | 'accepted'
   | 'confirmed'
   | 'ongoing'
   | 'completed'
   | 'cancelled'
   | 'paid'
-  | 'payment_pending';
+  | 'payment_pending'
+  | 'deposit_pending'
+  | 'deposit_paid'
+  | 'balance_pending';
 
 export interface ChefBookingDetails {
   meals_count: number;

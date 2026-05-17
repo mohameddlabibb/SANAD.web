@@ -156,6 +156,8 @@ export async function updateWorker(
   profileId: string,
   input: Omit<WorkerFormInput, 'email' | 'password'>,
 ): Promise<void> {
+  const validGender = (input.gender === 'Male' || input.gender === 'Female') ? input.gender : null;
+
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
@@ -163,7 +165,7 @@ export async function updateWorker(
       phone_number: input.phone || null,
       city: input.city || null,
       national_id: input.nationalId || null,
-      gender: input.gender || null,
+      gender: validGender,
     })
     .eq('id', profileId);
   if (profileError) throw profileError;
@@ -210,6 +212,7 @@ export async function updateWorker(
       nationality: input.nationality || null,
       hourly_rate: input.hourlyRate,
       monthly_rate: input.monthlyRate,
+      gender: validGender,
       ...workerExtras,
     })
     .eq('id', workerId);

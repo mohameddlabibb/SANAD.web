@@ -93,7 +93,7 @@ const Notifications = () => {
       await handleRead(notification.id);
     }
     if (notification.title_en === 'Service Completed' && notification.booking_id) {
-      navigate(`/payment/${notification.booking_id}`);
+      navigate(`/payment/${notification.booking_id}?type=balance`);
     } else if (notification.title_en === 'Payment Rejected' && notification.booking_id && !notification.alreadyPaid) {
       navigate(`/payment/${notification.booking_id}`);
     }
