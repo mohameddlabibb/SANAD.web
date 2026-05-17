@@ -6,6 +6,8 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, Clock, CreditCard, Smartphone, ArrowLeft, CheckCircle, Upload } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { getBookingById, updateBookingStatus } from '@/services/bookingService';
@@ -62,6 +64,9 @@ const Payment = () => {
   const screenshotInputRef = useRef<HTMLInputElement>(null);
   const [availableCoupons, setAvailableCoupons] = useState<UserCoupon[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<UserCoupon | null>(null);
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -130,6 +135,16 @@ const Payment = () => {
     if (paymentMethod === 'instapay' && !screenshotFile) {
       setError(t('payment.instapayScreenshotRequired', 'Please upload a screenshot of your Instapay transaction.'));
       return;
+    }
+    if (paymentMethod === 'card') {
+      if (cardNumber.replace(/\s/g, '').length < 16) {
+        setError('Please enter a valid card number');
+        return;
+      }
+      if (!expiry || !cvv) {
+        setError('Please fill in all card details');
+        return;
+      }
     }
     setIsSubmitting(true);
     setError(null);
@@ -322,6 +337,17 @@ const Payment = () => {
     );
   }
 
+  const formatCardNumber = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 16);
+    return digits.replace(/(.{4})/g, '$1 ').trim();
+  };
+
+  const formatExpiry = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    return digits;
+  };
+
   const mgmtFee = booking.management_fee ?? (booking.booking_type ? MANAGEMENT_FEE : 0);
   const emergFee = booking.emergency_fee ?? (booking.booking_type === 'emergency' ? EMERGENCY_FEE : 0);
   const basePrice = booking.total_price - mgmtFee - emergFee;
@@ -453,7 +479,7 @@ const Payment = () => {
                 {paymentMethods.map(({ id, labelKey, icon: Icon }) => (
                   <button
                     key={id}
-                    onClick={() => setPaymentMethod(id)}
+                    onClick={() => { setPaymentMethod(id); setCardNumber(''); setExpiry(''); setCvv(''); }}
                     className={cn(
                       'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
                       paymentMethod === id
@@ -468,6 +494,45 @@ const Payment = () => {
                   </button>
                 ))}
               </div>
+
+              {paymentMethod === 'card' && (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="card-number">Card Number</Label>
+                    <Input
+                      id="card-number"
+                      placeholder="1234 5678 9012 3456"
+                      value={cardNumber}
+                      onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+                      maxLength={19}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="expiry">Expiry</Label>
+                      <Input
+                        id="expiry"
+                        placeholder="MM/YY"
+                        value={expiry}
+                        onChange={e => setExpiry(formatExpiry(e.target.value))}
+                        maxLength={5}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="cvv">CVV</Label>
+                      <Input
+                        id="cvv"
+                        type="password"
+                        placeholder="•••"
+                        value={cvv}
+                        onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        maxLength={4}
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {paymentMethod === 'instapay' && (
                 <div className="space-y-3">
