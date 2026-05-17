@@ -2,10 +2,11 @@ import { supabase } from '../lib/supabaseClient.js';
 
 const PROFILES_TABLE = 'profiles';
 
-export async function signUp(email, password) {
+export async function signUp(email, password, metadata = {}) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: { data: metadata },
   });
 
   if (error) {

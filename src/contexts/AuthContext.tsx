@@ -114,7 +114,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signup = async (name: string, email: string, phone: string, password: string, nationalId: string, gender: string) => {
-    const { user: authUser } = await signUp(email, password);
+    const { user: authUser } = await signUp(email, password, {
+      full_name: name,
+      phone_number: phone,
+      national_id: nationalId,
+      gender,
+    });
 
     if (!authUser) {
       throw new Error('No user returned from signup');

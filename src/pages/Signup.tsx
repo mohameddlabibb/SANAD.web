@@ -76,7 +76,7 @@ const Signup = () => {
               onChange={(e) => setNationalId(e.target.value)}
             />
             <div className="flex gap-6">
-              {['male', 'female'].map((g) => (
+              {['Male', 'Female'].map((g) => (
                 <label key={g} className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="radio"
@@ -86,7 +86,7 @@ const Signup = () => {
                     onChange={() => setGender(g)}
                     className="accent-primary w-4 h-4"
                   />
-                  <span className="text-sm capitalize">{t(`auth.gender_${g}`, g === 'male' ? 'Male' : 'Female')}</span>
+                  <span className="text-sm">{t(`auth.gender_${g.toLowerCase()}`, g)}</span>
                 </label>
               ))}
             </div>
