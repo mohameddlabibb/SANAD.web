@@ -52,6 +52,7 @@ interface Provider {
   chefType?: 'premium' | 'normal';
   attributes?: string[];
   overnightAvailable?: boolean;
+  gender?: string | null;
 }
 
 
@@ -294,7 +295,7 @@ const ProviderDetail = () => {
       return;
     }
 
-    if (!femaleAcknowledged) {
+    if (provider?.gender === 'female' && !femaleAcknowledged) {
       toast({ title: t('common.error'), description: t('booking.femaleAckRequired', 'Please acknowledge the female worker condition.'), variant: 'destructive' });
       return;
     }
@@ -1121,21 +1122,23 @@ const ProviderDetail = () => {
                       <span className="text-3xl font-bold text-primary">EGP {totalCost.toLocaleString()}</span>
                     </div>
 
-                    <div
-                      className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${femaleAcknowledged ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
-                      onClick={() => setFemaleAcknowledged((v) => !v)}
-                    >
-                      <Checkbox
-                        id="female-ack-booking"
-                        checked={femaleAcknowledged}
-                        onCheckedChange={(checked) => setFemaleAcknowledged(!!checked)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-0.5 shrink-0"
-                      />
-                      <label htmlFor="female-ack-booking" className="text-sm leading-snug cursor-pointer select-none">
-                        {t('booking.femaleWorkerAck', 'I understand that if the assigned worker is female, a female must be present at the location throughout the service.')}
-                      </label>
-                    </div>
+                    {provider?.gender === 'female' && (
+                      <div
+                        className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition-colors ${femaleAcknowledged ? 'border-primary/40 bg-primary/5' : 'border-border'}`}
+                        onClick={() => setFemaleAcknowledged((v) => !v)}
+                      >
+                        <Checkbox
+                          id="female-ack-booking"
+                          checked={femaleAcknowledged}
+                          onCheckedChange={(checked) => setFemaleAcknowledged(!!checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 shrink-0"
+                        />
+                        <label htmlFor="female-ack-booking" className="text-sm leading-snug cursor-pointer select-none">
+                          {t('booking.femaleWorkerAck', 'I understand that if the assigned worker is female, a female must be present at the location throughout the service.')}
+                        </label>
+                      </div>
+                    )}
 
                     <Button
                       size="lg"
@@ -1146,7 +1149,8 @@ const ProviderDetail = () => {
                         (bookingType === 'normal' && (!selectedDate || !selectedTime)) ||
                         (bookingType === 'emergency' && !selectedTime) ||
                         (bookingType === 'package' && selectedMonths.length === 0) ||
-                        (bookingType === 'day' && (!selectedDate || !selectedTime))
+                        (bookingType === 'day' && (!selectedDate || !selectedTime)) ||
+                        (provider?.gender === 'female' && !femaleAcknowledged)
                       }
                     >
                       {isSubmitting ? t('booking.submitting', 'Booking...') : bookingType === 'emergency' ? t('providerDetail.bookEmergency', 'Book Emergency Now') : t('common.bookNow')}

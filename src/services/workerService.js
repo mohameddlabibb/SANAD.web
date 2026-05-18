@@ -41,6 +41,7 @@ function mapWorkerToProvider(worker) {
     languages: worker.languages ?? [],
     city: profile.city ?? '',
     overnightAvailable: attrs.overnight_available ?? false,
+    gender: worker.gender ?? null,
   };
 }
 
