@@ -69,6 +69,10 @@ const BookingDetail = () => {
       .single()
       .then(async ({ data, error }) => {
         if (!error && data) {
+          if (data.user_id !== user?.id && data.worker_id !== user?.id) {
+            navigate('/');
+            return;
+          }
           const autoCancel =
             ['pending', 'pending_deposit', 'confirmed', 'accepted'].includes(data.status ?? '') &&
             data.booking_date &&

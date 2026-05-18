@@ -48,7 +48,7 @@ function getNotificationMeta(title: string): { icon: React.ReactNode; bg: string
 const Notifications = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { resetBadge } = useNotifications();
+  const { clearUnreadCount } = useNotifications();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -78,7 +78,7 @@ const Notifications = () => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-    resetBadge();
+    clearUnreadCount();
   }, [user?.id]);
 
   const handleRead = async (notificationId: string) => {

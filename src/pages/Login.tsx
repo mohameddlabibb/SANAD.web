@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseError } from '@/lib/parseError';
+import { checkRateLimit, recordAttempt, msUntilReset } from '@/lib/rateLimiter';
 const logo = '/favicon.svg';
 
 const Login = () => {
@@ -21,6 +22,14 @@ const Login = () => {
     e.preventDefault();
     setError(null);
 
+    const WINDOW = 15 * 60 * 1000;
+    if (!checkRateLimit('login', 5, WINDOW)) {
+      const mins = Math.ceil(msUntilReset('login', WINDOW) / 60000);
+      setError(t('auth.rateLimited', `Too many attempts. Please wait ${mins} minute(s) and try again.`, { mins }));
+      return;
+    }
+
+    recordAttempt('login');
     try {
       const loggedInUser = await login(email, password);
       navigate(loggedInUser.role === 'admin' ? '/admin' : '/');

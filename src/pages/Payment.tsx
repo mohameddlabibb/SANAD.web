@@ -77,6 +77,10 @@ const Payment = () => {
 
     getBookingById(bookingId)
       .then(async (b) => {
+        if (!b || b.user_id !== user.id) {
+          navigate('/');
+          return;
+        }
         setBooking(b);
         // Check for existing active transactions for this payment stage
         const { data: invoices } = await supabase

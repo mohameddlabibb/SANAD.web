@@ -18,6 +18,7 @@ import Payment from "./pages/Payment";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 import AdminRoute from "./components/AdminRoute";
+import ProtectedRoute from "./components/ProtectedRoute";
 import WorkerDashboard from "./pages/WorkerDashboard";
 import WorkerRoute from "./components/WorkerRoute";
 import BookingConfirmed from "./pages/BookingConfirmed";
@@ -44,16 +45,16 @@ const App = () => (
             <Route path="/provider/:id" element={<ProviderDetail />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/payment/:bookingId" element={<Payment />} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+            <Route path="/payment/:bookingId" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/worker" element={<WorkerRoute><WorkerDashboard /></WorkerRoute>} />
-            <Route path="/booking-confirmed/:bookingId" element={<BookingConfirmed />} />
-            <Route path="/my-requests" element={<MyRequests />} />
-            <Route path="/booking/:bookingId" element={<BookingDetail />} />
-            <Route path="/donations" element={<Donations />} />
-            <Route path="/bidding/:requestId" element={<BiddingRequestDetail />} />
+            <Route path="/booking-confirmed/:bookingId" element={<ProtectedRoute><BookingConfirmed /></ProtectedRoute>} />
+            <Route path="/my-requests" element={<ProtectedRoute><MyRequests /></ProtectedRoute>} />
+            <Route path="/booking/:bookingId" element={<ProtectedRoute><BookingDetail /></ProtectedRoute>} />
+            <Route path="/donations" element={<ProtectedRoute><Donations /></ProtectedRoute>} />
+            <Route path="/bidding/:requestId" element={<ProtectedRoute><BiddingRequestDetail /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
