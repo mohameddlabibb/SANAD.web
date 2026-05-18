@@ -126,7 +126,7 @@ const Donations = () => {
           <h1 className="text-2xl font-bold mb-6">Donations</h1>
 
         {loading ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-56 bg-gray-200 rounded-xl animate-pulse" />
             ))}
@@ -134,7 +134,7 @@ const Donations = () => {
         ) : institutes.length === 0 ? (
           <p className="text-center text-gray-500 py-16">{t('donations.noInstitutes')}</p>
         ) : (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {institutes.map(institute => (
               <Card key={institute.id} className="overflow-hidden flex flex-col">
                 {institute.photo_url ? (
