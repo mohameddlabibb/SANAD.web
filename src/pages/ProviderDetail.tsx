@@ -453,7 +453,7 @@ const ProviderDetail = () => {
                   <div className={`relative h-48 rounded-xl flex items-center justify-center mb-6 ${isPremiumChef ? 'bg-gradient-to-br from-amber-100 to-amber-50' : 'bg-gradient-to-br from-primary/10 to-primary/5'}`}>
                     <div className={`w-28 h-28 rounded-full overflow-hidden flex items-center justify-center text-4xl font-heading ${isPremiumChef ? 'bg-amber-200 text-amber-800' : 'bg-primary/20 text-primary'}`}>
                       {provider.image ? (
-                        <img src={provider.image} alt={displayName} className="w-full h-full object-cover" />
+                        <img src={provider.image} alt={displayName} className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         displayName.charAt(0)
                       )}

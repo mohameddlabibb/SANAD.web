@@ -142,6 +142,7 @@ const Donations = () => {
                     src={institute.photo_url}
                     alt={institute.name}
                     className="w-full h-32 object-contain bg-white"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-32 bg-gradient-to-br from-green-100 to-teal-100 flex items-center justify-center">

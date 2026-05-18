@@ -53,7 +53,7 @@ export const ProviderCard = ({ provider, locale, emergencyMode, availableSlots }
         <div className={`relative h-48 flex items-center justify-center ${isPremiumChef ? 'bg-gradient-to-br from-amber-100 to-amber-50' : emergencyMode ? 'bg-gradient-to-br from-emergency-light to-emergency-muted/30' : 'bg-gradient-to-br from-primary/10 to-primary/5'}`}>
           <div className={`w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-3xl font-heading ${isPremiumChef ? 'bg-amber-200 text-amber-800' : emergencyMode ? 'bg-emergency-muted text-emergency-dark' : 'bg-primary/20 text-primary'}`}>
             {provider.image ? (
-              <img src={provider.image} alt={displayName} className="w-full h-full object-cover" />
+              <img src={provider.image} alt={displayName} className="w-full h-full object-cover" loading="lazy" />
             ) : (
               displayName.charAt(0)
             )}
